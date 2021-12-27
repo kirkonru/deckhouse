@@ -31,7 +31,7 @@ ansible:
 git:
 - url: https://github.com/deckhouse/mcm.git
   to: /src
-  branch: volume-type-support
+  commit: 7b67acaaa187fa2143ec882ffe1afd0f7097d74b
   stageDependencies:
     install:
     - '**/*'
