@@ -82,7 +82,7 @@ var _ = sdk.RegisterFunc(&go_hook.HookConfig{
 		{
 			Name:       "crs",
 			ApiVersion: "deckhouse.io/v1alpha1",
-			Kind:       "CephCSI",
+			Kind:       "CephCSIDriver",
 			FilterFunc: applyFilter,
 		},
 	},

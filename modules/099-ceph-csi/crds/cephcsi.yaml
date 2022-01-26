@@ -10,8 +10,8 @@ spec:
   group: deckhouse.io
   scope: Cluster
   names:
-    plural: cephcsi
-    kind: CephCSI
+    plural: cephcsidriver
+    kind: CephCSIDriver
   preserveUnknownFields: false
   versions:
     - name: v1alpha1
@@ -21,7 +21,7 @@ spec:
         openAPIV3Schema:
           type: object
           description: |
-            Ceph cluster connection parameters and StorageClasses configuration
+            Ceph cluster connection parameters and StorageClasses configuration.
           required:
             - spec
           properties:
@@ -35,19 +35,19 @@ spec:
               properties:
                 clusterID:
                   description: |
-                    Ceph FSID/UUID
+                    Ceph FSID/UUID.
                   type: string
                 userID:
                   description: |
-                    Username without `client.`
+                    Username without `client.`.
                   type: string
                 userKey:
                   description: |
-                    Ceph auth key corresponding to userID
+                    Ceph auth key corresponding to userID.
                   type: string
                 monitors:
                   description: |
-                    List of ceph-mon IP addresses in the format `10.0.0.10:6789`
+                    List of ceph-mon IP addresses in the format `10.0.0.10:6789`.
                   type: array
                   items:
                     type: string
@@ -56,10 +56,14 @@ spec:
                   properties:
                     storageClasses:
                       description: |
-                        Description of StorageClasses for Rados Block Device (RBD)
+                        Description of StorageClasses for Rados Block Device (RBD).
                       type: array
                       items:
                         type: object
+                        required:
+                          - name
+                          - reclaimPolicy
+                          - allowVolumeExpansion
                         properties:
                           name:
                             description: |
@@ -67,36 +71,38 @@ spec:
                             type: string
                           pool:
                             description: |
-                              Pool name for creating RBD images
+                              Pool name for creating RBD images.
                             type: string
                           reclaimPolicy:
                             description: |
-                              The reclaim policy for a PersistentVolume
-                              https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
+                              The reclaim policy for a PersistentVolume.
+                              More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
                             type: string
                           allowVolumeExpansion:
                             description: |
-                              Allows the users to resize the volume by editing the corresponding PVC object
+                              Allows the users to resize the volume by editing the corresponding PVC object.
                             type: boolean
+                            default: true
                           mountOptions:
                             description: |
-                              List of mount options
+                              List of mount options.
                             type: array
                             items:
                               type: string
                           defaultFSType:
                             description: |
-                              Default fstype
+                              Default fstype.
                             type: string
                             enum:
                               - ext4
                               - xfs
+                            default: ext4
                 cephfs:
                   type: object
                   properties:
                     subvolumeGroup:
                       description: |
-                        CephFS subvolume group name
+                        CephFS subvolume group name.
                       type: string
                     storageClasses:
                       type: array
@@ -109,23 +115,23 @@ spec:
                             type: string
                           pool:
                             description: |
-                              Pool name for creating RBD images
+                              Pool name for creating RBD images.
                             type: string
                           reclaimPolicy:
                             description: |
-                              The reclaim policy for a PersistentVolume
+                              The reclaim policy for a PersistentVolume.
                             type: string
                           allowVolumeExpansion:
                             description: |
-                              Allows the users to resize the volume by editing the corresponding PVC object
+                              Allows the users to resize the volume by editing the corresponding PVC object.
                             type: boolean
                           mountOptions:
                             description: |
-                              List of mount options
+                              List of mount options.
                             type: array
                             items:
                               type: string
                           fsName:
                             description: |
-                              CephFS filesystem name
+                              CephFS filesystem name.
                             type: string
