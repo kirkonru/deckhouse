@@ -35,9 +35,9 @@ spec:
                         Описание StorageClass'ов для Rados Block Device (RBD).
                       items:
                         properties:
-                          name:
+                          namePostfix:
                             description: |
-                              Имя StorageClass.
+                              Часть имени StorageClass после `-`. В качестве первой части используется имя из CustomResource CephCSIDriver.
                           pool:
                             description: |
                               Название пула в котором будут создаваться RBD-образы.
@@ -68,9 +68,9 @@ spec:
                         Описание StorageClass'ов для CephFS.
                       items:
                         properties:
-                          name:
+                          namePostfix:
                             description: |
-                              Имя StorageClass.
+                              Часть имени StorageClass после `-`. В качестве первой части используется имя из CustomResource CephCSIDriver. 
                           pool:
                             description: |
                               Название пула в котором будут создаваться RBD-образы.

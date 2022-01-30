@@ -35,7 +35,7 @@ properties:
                       items:
                         type: object
                         properties:
-                          name:
+                          namePostfix:
                             type: string
                           pool:
                             type: string
@@ -62,7 +62,7 @@ properties:
                       items:
                         type: object
                         properties:
-                          name:
+                          namePostfix:
                             type: string
                           pool:
                             type: string

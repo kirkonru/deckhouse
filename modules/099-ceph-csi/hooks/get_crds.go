@@ -55,7 +55,7 @@ type CephFS struct {
 }
 
 type StorageClass struct {
-	Name                 string   `json:"name"`
+	NamePostfix          string   `json:"namePostfix"`
 	Pool                 string   `json:"pool,omitempty"`
 	ReclaimPolicy        string   `json:"reclaimPolicy,omitempty"`
 	AllowVolumeExpansion bool     `json:"allowVolumeExpansion,omitempty"`
@@ -77,6 +77,11 @@ type CSIConfig struct {
 
 type CSIConfigCephFS struct {
 	SubvolumeGroup string `json:"subvolumeGroup,omitempty"`
+}
+
+type StorageClassFilter struct {
+	Name          string `json:"namePostfix"`
+	ReclaimPolicy string `json:"reclaimPolicy"`
 }
 
 var _ = sdk.RegisterFunc(&go_hook.HookConfig{
@@ -120,21 +125,13 @@ func applyStorageclassFilter(obj *unstructured.Unstructured) (go_hook.FilterResu
 		return nil, fmt.Errorf("cannot convert kubernetes object: %v", err)
 	}
 
-	return StorageClass{
-		Name:                 sc.Name,
-		Pool:                 sc.Parameters["pool"],
-		ReclaimPolicy:        string(*sc.ReclaimPolicy),
-		AllowVolumeExpansion: *sc.AllowVolumeExpansion,
-		MountOptions:         sc.MountOptions,
-		DefaultFSType:        sc.Parameters["csi.storage.k8s.io/fstype"],
-		FsName:               sc.Parameters["fsName"],
+	return StorageClassFilter{
+		Name:          sc.Name,
+		ReclaimPolicy: string(*sc.ReclaimPolicy),
 	}, nil
 }
 
 func setInternalValues(input *go_hook.HookInput, dc dependency.Container) error {
-	crs := input.Snapshots["crs"]
-	scs := input.Snapshots["scs"]
-
 	values := []InternalValues{}
 	csiConfig := []CSIConfig{}
 
@@ -143,18 +140,19 @@ func setInternalValues(input *go_hook.HookInput, dc dependency.Container) error 
 		return err
 	}
 
+	crs := input.Snapshots["crs"]
 	for _, cr := range crs {
 		obj := cr.(*CephCSI)
-
 		rbdStorageClasses := obj.Spec.Rbd.StorageClasses
 		if len(rbdStorageClasses) > 0 {
 			for _, sc := range rbdStorageClasses {
-				if isReclaimPolicyChanged(scs, sc.Name, sc.ReclaimPolicy) {
-					err := kubeClient.StorageV1().StorageClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+				storageClassName := obj.Metadata.Name + "-" + sc.NamePostfix
+				if isReclaimPolicyChanged(input, storageClassName, sc.ReclaimPolicy) {
+					err := kubeClient.StorageV1().StorageClasses().Delete(context.TODO(), storageClassName, metav1.DeleteOptions{})
 					if err != nil {
 						input.LogEntry.Error(err.Error())
 					} else {
-						input.LogEntry.Infof("ReclaimPolicy changed. StorageClass %s is Deleted.", sc.Name)
+						input.LogEntry.Infof("ReclaimPolicy changed. StorageClass %s is Deleted.", storageClassName)
 					}
 				}
 			}
@@ -163,12 +161,13 @@ func setInternalValues(input *go_hook.HookInput, dc dependency.Container) error 
 		cephFsStorageClasses := obj.Spec.CephFS.StorageClasses
 		if len(cephFsStorageClasses) > 0 {
 			for _, sc := range cephFsStorageClasses {
-				if isReclaimPolicyChanged(scs, sc.Name, sc.ReclaimPolicy) {
-					err := kubeClient.StorageV1().StorageClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+				storageClassName := obj.Metadata.Name + "-" + sc.NamePostfix
+				if isReclaimPolicyChanged(input, storageClassName, sc.ReclaimPolicy) {
+					err := kubeClient.StorageV1().StorageClasses().Delete(context.TODO(), storageClassName, metav1.DeleteOptions{})
 					if err != nil {
 						input.LogEntry.Error(err.Error())
 					} else {
-						input.LogEntry.Infof("ReclaimPolicy changed. StorageClass %s is Deleted.", sc.Name)
+						input.LogEntry.Infof("ReclaimPolicy changed. StorageClass %s is Deleted.", storageClassName)
 					}
 				}
 			}
@@ -184,11 +183,12 @@ func setInternalValues(input *go_hook.HookInput, dc dependency.Container) error 
 	return nil
 }
 
-func isReclaimPolicyChanged(storageClasses []go_hook.FilterResult, scName, scReclaimPolicy string) bool {
+func isReclaimPolicyChanged(input *go_hook.HookInput, scName, scReclaimPolicy string) bool {
+	storageClasses := input.Snapshots["scs"]
 	for _, storageClass := range storageClasses {
-		sc := storageClass.(storagev1.StorageClass)
+		sc := storageClass.(StorageClassFilter)
 		if sc.Name == scName {
-			if string(*sc.ReclaimPolicy) != scReclaimPolicy {
+			if sc.ReclaimPolicy != scReclaimPolicy {
 				return true
 			}
 		}

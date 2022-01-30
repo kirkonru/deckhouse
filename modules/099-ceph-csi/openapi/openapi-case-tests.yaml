@@ -13,7 +13,7 @@ positive:
                     defaultFSType: ext4
                     mountOptions:
                       - discard
-                    name: test
+                    namePostfix: test
                     pool: test
                     reclaimPolicy: Delete
               userID: test
@@ -27,4 +27,4 @@ negative:
               rbd:
                 storageClasses:
                   - defaultFSType: ntfs
-                    name: test
+                    namePostfix: test
