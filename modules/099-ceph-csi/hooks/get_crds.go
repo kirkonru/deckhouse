@@ -17,12 +17,16 @@ limitations under the License.
 package hooks
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/flant/addon-operator/pkg/module_manager/go_hook"
 	"github.com/flant/addon-operator/sdk"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/deckhouse/deckhouse/go_lib/dependency"
 )
 
 type CephCSI struct {
@@ -42,15 +46,15 @@ type Spec struct {
 }
 
 type RBD struct {
-	StorageClasses []StorageClasses `json:"storageClasses,omitempty"`
+	StorageClasses []StorageClass `json:"storageClasses,omitempty"`
 }
 
 type CephFS struct {
-	StorageClasses []StorageClasses `json:"storageClasses,omitempty"`
-	SubvolumeGroup string           `json:"subvolumeGroup,omitempty"`
+	StorageClasses []StorageClass `json:"storageClasses,omitempty"`
+	SubvolumeGroup string         `json:"subvolumeGroup,omitempty"`
 }
 
-type StorageClasses struct {
+type StorageClass struct {
 	Name                 string   `json:"name"`
 	Pool                 string   `json:"pool,omitempty"`
 	ReclaimPolicy        string   `json:"reclaimPolicy,omitempty"`
@@ -83,12 +87,23 @@ var _ = sdk.RegisterFunc(&go_hook.HookConfig{
 			Name:       "crs",
 			ApiVersion: "deckhouse.io/v1alpha1",
 			Kind:       "CephCSIDriver",
-			FilterFunc: applyFilter,
+			FilterFunc: applyCephCSIDriverFilter,
+		},
+		{
+			Name:       "scs",
+			ApiVersion: "storage.k8s.io/v1",
+			Kind:       "Storageclass",
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "ceph-csi",
+				},
+			},
+			FilterFunc: applyStorageclassFilter,
 		},
 	},
-}, setInternalValues)
+}, dependency.WithExternalDependencies(setInternalValues))
 
-func applyFilter(obj *unstructured.Unstructured) (go_hook.FilterResult, error) {
+func applyCephCSIDriverFilter(obj *unstructured.Unstructured) (go_hook.FilterResult, error) {
 	var csi = &CephCSI{}
 	err := sdk.FromUnstructured(obj, csi)
 	if err != nil {
@@ -98,14 +113,67 @@ func applyFilter(obj *unstructured.Unstructured) (go_hook.FilterResult, error) {
 	return csi, nil
 }
 
-func setInternalValues(input *go_hook.HookInput) error {
+func applyStorageclassFilter(obj *unstructured.Unstructured) (go_hook.FilterResult, error) {
+	var sc = &storagev1.StorageClass{}
+	err := sdk.FromUnstructured(obj, sc)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert kubernetes object: %v", err)
+	}
+
+	return StorageClass{
+		Name:                 sc.Name,
+		Pool:                 sc.Parameters["pool"],
+		ReclaimPolicy:        string(*sc.ReclaimPolicy),
+		AllowVolumeExpansion: *sc.AllowVolumeExpansion,
+		MountOptions:         sc.MountOptions,
+		DefaultFSType:        sc.Parameters["csi.storage.k8s.io/fstype"],
+		FsName:               sc.Parameters["fsName"],
+	}, nil
+}
+
+func setInternalValues(input *go_hook.HookInput, dc dependency.Container) error {
 	crs := input.Snapshots["crs"]
+	scs := input.Snapshots["scs"]
 
 	values := []InternalValues{}
 	csiConfig := []CSIConfig{}
 
+	kubeClient, err := dc.GetK8sClient()
+	if err != nil {
+		return err
+	}
+
 	for _, cr := range crs {
 		obj := cr.(*CephCSI)
+
+		rbdStorageClasses := obj.Spec.Rbd.StorageClasses
+		if len(rbdStorageClasses) > 0 {
+			for _, sc := range rbdStorageClasses {
+				if isReclaimPolicyChanged(scs, sc.Name, sc.ReclaimPolicy) {
+					err := kubeClient.StorageV1().StorageClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+					if err != nil {
+						input.LogEntry.Error(err.Error())
+					} else {
+						input.LogEntry.Infof("ReclaimPolicy changed. StorageClass %s is Deleted.", sc.Name)
+					}
+				}
+			}
+		}
+
+		cephFsStorageClasses := obj.Spec.CephFS.StorageClasses
+		if len(cephFsStorageClasses) > 0 {
+			for _, sc := range cephFsStorageClasses {
+				if isReclaimPolicyChanged(scs, sc.Name, sc.ReclaimPolicy) {
+					err := kubeClient.StorageV1().StorageClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+					if err != nil {
+						input.LogEntry.Error(err.Error())
+					} else {
+						input.LogEntry.Infof("ReclaimPolicy changed. StorageClass %s is Deleted.", sc.Name)
+					}
+				}
+			}
+		}
+
 		values = append(values, InternalValues{Name: obj.Metadata.Name, Spec: obj.Spec})
 		csiConfig = append(csiConfig, CSIConfig{ClusterID: obj.Spec.ClusterID, Monitors: obj.Spec.Monitors, CephFS: CSIConfigCephFS{SubvolumeGroup: obj.Spec.CephFS.SubvolumeGroup}})
 	}
@@ -114,4 +182,16 @@ func setInternalValues(input *go_hook.HookInput) error {
 	input.Values.Set("cephCsi.internal.csiConfig", csiConfig)
 
 	return nil
+}
+
+func isReclaimPolicyChanged(storageClasses []go_hook.FilterResult, scName, scReclaimPolicy string) bool {
+	for _, storageClass := range storageClasses {
+		sc := storageClass.(storagev1.StorageClass)
+		if sc.Name == scName {
+			if string(*sc.ReclaimPolicy) != scReclaimPolicy {
+				return true
+			}
+		}
+	}
+	return false
 }
