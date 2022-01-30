@@ -1,0 +1,119 @@
+spec:
+  versions:
+    - name: v1alpha1
+      schema: &schema
+        openAPIV3Schema:
+          type: object
+          description: |
+            Параметры подключения к ceph-кластеру и настройка StorageClasses
+          properties:
+            spec:
+              type: object
+              required:
+                - clusterID
+                - userID
+                - userKey
+                - monitors
+              properties:
+                clusterID:
+                  description: |
+                    FSID/UUID ceph-кластера
+                    ```shell
+                    ceph fsid
+                    ```
+                  type: string
+                userID:
+                  description: |
+                    Имя пользователя без `client.`
+                  type: string
+                userKey:
+                  description: |
+                    Ключ авторизации
+                  type: string
+                monitors:
+                  description: |
+                    Список IP-адресов ceph-mon'ов в формате `10.0.0.10:6789`
+                  type: array
+                  items:
+                    type: string
+                rbd:
+                  type: object
+                  properties:
+                    storageClasses:
+                      description: |
+                        Описание StorageClass'ов для Rados Block Device (RBD)
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            description: |
+                              Имя StorageClass
+                            type: string
+                          pool:
+                            description: |
+                              Название пула в котором будут создаваться RBD-образы
+                            type: string
+                          reclaimPolicy:
+                            description: |
+                              Политика возврата для PersistentVolume
+                              https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
+                            type: string
+                          allowVolumeExpansion:
+                            description: |
+                              Включает возможность изменять размер тома, редактируя соответствующий объект PersistentVolumeClaim
+                              https://kubernetes.io/docs/concepts/storage/storage-classes/#allow-volume-expansion
+                            type: boolean
+                          mountOptions:
+                            description: |
+                              Список опций монтирования
+                            type: array
+                            items:
+                              type: string
+                          defaultFSType:
+                            description: |
+                              Файловая система по умолчанию для создаваемых Persistent Volumes
+                            type: string
+                            enum:
+                              - ext4
+                              - xfs
+                cephfs:
+                  type: object
+                  properties:
+                    subvolumeGroup:
+                      description: |
+                        Имя группы для subvolumes
+                      type: string
+                    storageClasses:
+                      description: |
+                        Описание StorageClass'ов для CephFS
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            description: |
+                              Имя StorageClass
+                            type: string
+                          pool:
+                            description: |
+                              Название пула в котором будут создаваться RBD-образы
+                            type: string
+                          reclaimPolicy:
+                            description: |
+                              Политика возврата для PersistentVolume
+                            type: string
+                          allowVolumeExpansion:
+                            description: |
+                              Включает возможность изменять размер тома, редактируя соответствующий объект PersistentVolumeClaim
+                            type: boolean
+                          mountOptions:
+                            description: |
+                              Список опций монтирования
+                            type: array
+                            items:
+                              type: string
+                          fsName:
+                            description: |
+                              Имя файловой системы CephFS
+                            type: string

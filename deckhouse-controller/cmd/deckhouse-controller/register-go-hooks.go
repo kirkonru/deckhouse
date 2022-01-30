@@ -38,6 +38,7 @@ import (
 	_ "github.com/deckhouse/deckhouse/modules/040-control-plane-manager/hooks"
 	_ "github.com/deckhouse/deckhouse/modules/040-node-manager/hooks"
 	_ "github.com/deckhouse/deckhouse/modules/042-kube-dns/hooks"
+	_ "github.com/deckhouse/deckhouse/modules/099-ceph-csi/hooks"
 	_ "github.com/deckhouse/deckhouse/modules/101-cert-manager/hooks"
 	_ "github.com/deckhouse/deckhouse/modules/140-user-authz/hooks"
 	_ "github.com/deckhouse/deckhouse/modules/150-user-authn/hooks"

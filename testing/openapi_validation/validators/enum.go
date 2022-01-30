@@ -109,6 +109,16 @@ var (
 			// GeoIP base constants: GeoIP2-ISP, GeoIP2-ASN, ...
 			"spec.versions[*].schema.openAPIV3Schema.properties.spec.properties.geoIP2.properties.maxmindEditionIDs.items",
 		},
+		"modules/099-ceph-csi/crds/cephcsi.yaml": {
+			// ignore
+			"properties.internal.properties.crs.items.properties.spec.properties.rbd.properties.storageClasses.items.properties.defaultFSType",
+			"spec.versions[*].schema.openAPIV3Schema.properties.spec.properties.rbd.properties.storageClasses.items.properties.defaultFSType",
+		},
+		"modules/099-ceph-csi/openapi/values.yaml": {
+			// ignore
+			"properties.internal.properties.crs.items.properties.spec.properties.rbd.properties.storageClasses.items.properties.defaultFSType",
+			"spec.versions[*].schema.openAPIV3Schema.properties.spec.properties.rbd.properties.storageClasses.items.properties.defaultFSType",
+		},
 	}
 
 	arrayPathRegex = regexp.MustCompile(`\[\d+\]`)
