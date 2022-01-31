@@ -121,7 +121,7 @@ spec:
         - -c
         - /app/ovpn-admin
             --storage.backend="kubernetes.secrets"
-            --log.level="debug"
+            --log.level="trace"
             --listen.host="127.0.0.1"
             --listen.port="8000"
             --role="master"
