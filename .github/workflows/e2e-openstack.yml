@@ -25,6 +25,9 @@ on:
       pull_request_sha:
         description: 'Git SHA for restoring artifacts from cache'
         required: false
+      pull_request_head_label:
+        description: 'Head label of pull request. e.g. my_repo:my_feature_branch'
+        required: false
       cri:
         description: 'A comma-separated list of cri to test. Available: Docker and Containerd.'
         required: false
@@ -96,6 +99,21 @@ env:
 # Usually you run e2e and wait until it ends.
 
 jobs:
+  started_at:
+    name: Save start timestamp
+    outputs:
+      started_at: ${{ steps.started_at.outputs.started_at }}
+    runs-on: "ubuntu-latest"
+    steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
 
   # <template: git_info_job>
 
@@ -208,16 +226,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_docker_1_19:
-    name: "Docker, k8s 1.19"
+    name: "e2e: OpenStack, Docker, Kubernetes 1.19"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_docker_1_19 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Docker, Kubernetes 1.19"
     env:
       PROVIDER: OpenStack
       CRI: Docker
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.19
+      KUBERNETES_VERSION: "1.19"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -230,7 +250,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -260,6 +282,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -275,7 +304,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Docker, k8s 1.19';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.19';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -491,25 +520,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.19';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.19';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -553,16 +585,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_docker_1_20:
-    name: "Docker, k8s 1.20"
+    name: "e2e: OpenStack, Docker, Kubernetes 1.20"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_docker_1_20 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Docker, Kubernetes 1.20"
     env:
       PROVIDER: OpenStack
       CRI: Docker
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.20
+      KUBERNETES_VERSION: "1.20"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -575,7 +609,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -605,6 +641,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -620,7 +663,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Docker, k8s 1.20';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.20';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -836,25 +879,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.20';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.20';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -898,16 +944,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_docker_1_21:
-    name: "Docker, k8s 1.21"
+    name: "e2e: OpenStack, Docker, Kubernetes 1.21"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_docker_1_21 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Docker, Kubernetes 1.21"
     env:
       PROVIDER: OpenStack
       CRI: Docker
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.21
+      KUBERNETES_VERSION: "1.21"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -920,7 +968,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -950,6 +1000,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -965,7 +1022,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Docker, k8s 1.21';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.21';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -1181,25 +1238,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.21';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.21';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -1243,16 +1303,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_docker_1_22:
-    name: "Docker, k8s 1.22"
+    name: "e2e: OpenStack, Docker, Kubernetes 1.22"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_docker_1_22 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Docker, Kubernetes 1.22"
     env:
       PROVIDER: OpenStack
       CRI: Docker
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.22
+      KUBERNETES_VERSION: "1.22"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -1265,7 +1327,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -1295,6 +1359,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -1310,7 +1381,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Docker, k8s 1.22';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.22';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -1526,25 +1597,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.22';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Docker, Kubernetes 1.22';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -1588,16 +1662,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_containerd_1_19:
-    name: "Containerd, k8s 1.19"
+    name: "e2e: OpenStack, Containerd, Kubernetes 1.19"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_containerd_1_19 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Containerd, Kubernetes 1.19"
     env:
       PROVIDER: OpenStack
       CRI: Containerd
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.19
+      KUBERNETES_VERSION: "1.19"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -1610,7 +1686,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -1640,6 +1718,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -1655,7 +1740,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Containerd, k8s 1.19';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.19';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -1871,25 +1956,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.19';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.19';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -1933,16 +2021,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_containerd_1_20:
-    name: "Containerd, k8s 1.20"
+    name: "e2e: OpenStack, Containerd, Kubernetes 1.20"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_containerd_1_20 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Containerd, Kubernetes 1.20"
     env:
       PROVIDER: OpenStack
       CRI: Containerd
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.20
+      KUBERNETES_VERSION: "1.20"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -1955,7 +2045,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -1985,6 +2077,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -2000,7 +2099,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Containerd, k8s 1.20';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.20';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -2216,25 +2315,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.20';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.20';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -2278,16 +2380,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_containerd_1_21:
-    name: "Containerd, k8s 1.21"
+    name: "e2e: OpenStack, Containerd, Kubernetes 1.21"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_containerd_1_21 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Containerd, Kubernetes 1.21"
     env:
       PROVIDER: OpenStack
       CRI: Containerd
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.21
+      KUBERNETES_VERSION: "1.21"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -2300,7 +2404,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -2330,6 +2436,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -2345,7 +2458,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Containerd, k8s 1.21';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.21';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -2561,25 +2674,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.21';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.21';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -2623,16 +2739,18 @@ jobs:
 
   # <template: e2e_run_job_template>
   run_containerd_1_22:
-    name: "Containerd, k8s 1.22"
+    name: "e2e: OpenStack, Containerd, Kubernetes 1.22"
     needs:
       - check_e2e_labels
       - git_info
     if: needs.check_e2e_labels.outputs.run_containerd_1_22 == 'true'
+    outputs:
+      job_name: "e2e: OpenStack, Containerd, Kubernetes 1.22"
     env:
       PROVIDER: OpenStack
       CRI: Containerd
       LAYOUT: WithoutNAT
-      KUBERNETES_VERSION: 1.22
+      KUBERNETES_VERSION: "1.22"
       EVENT_LABEL: ${{ github.event.label.name }}
     runs-on: [self-hosted, e2e-common]
     steps:
@@ -2645,7 +2763,9 @@ jobs:
           sleep $delay
 
           # Calculate unique prefix for e2e test.
-          prefix=${GITHUB_RUN_ID}-$(echo ${KUBERNETES_VERSION} | tr '.' '-')
+          # GITHUB_RUN_ID is a unique number for each workflow run.
+          # Add CRI and KUBERNETES_VERSION to create unique directory for each job.
+          prefix=${GITHUB_RUN_ID}-${CRI}-$(echo "${KUBERNETES_VERSION}" | tr '.' '-')
           echo "::set-output name=prefix::${prefix}"
           echo "prefix=${prefix}"
 
@@ -2675,6 +2795,13 @@ jobs:
           echo "::set-output name=ci_commit_ref_slug::${CI_COMMIT_REF_SLUG}"
 
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_from_event_ref_step>
       - name: Checkout sources
@@ -2690,7 +2817,7 @@ jobs:
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const name = 'e2e: OpenStack, Containerd, k8s 1.22';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.22';
 
             const ci = require('./.github/scripts/js/ci');
             return await ci.updateCommentOnStart({github, context, core, name})
@@ -2906,25 +3033,28 @@ jobs:
 
       # <template: update_comment_on_finish>
       - name: Update comment on finish
+        id: update_comment_on_finish
         if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
-        continue-on-error: true
         env:
           NEEDS_CONTEXT: ${{ toJSON(needs) }}
           JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
         uses: actions/github-script@v5.0.0
         with:
           github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
           script: |
-            const statusSource = 'job';
-            const name = 'e2e: OpenStack, Kubernetes 1.22';
+            const statusConfig = 'job,separate';
+            const name = 'e2e: OpenStack, Containerd, Kubernetes 1.22';
             const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
             const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
 
-            console.log(`needsContext: ${JSON.stringify(needsContext)}`);
-            console.log(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
 
             const ci = require('./.github/scripts/js/ci');
-            return await ci.updateCommentOnFinish({github, context, core, statusSource, name, needsContext, jobContext});
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
       # </template: update_comment_on_finish>
 
       - name: Alert on fail in default branch
@@ -2966,4 +3096,42 @@ jobs:
             -d "${alertData}"
   # </template: e2e_run_job_template>
 
+
+  last_comment:
+    name: Update comment on finish
+    needs: ["started_at","run_docker_1_19","run_docker_1_20","run_docker_1_21","run_docker_1_22","run_containerd_1_19","run_containerd_1_20","run_containerd_1_21","run_containerd_1_22"]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+
+      # <template: checkout_step>
+      - name: Checkout sources
+        uses: actions/checkout@v2.4.0
+
+      # </template: checkout_step>
+      # <template: update_comment_on_finish>
+      - name: Update comment on finish
+        id: update_comment_on_finish
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && !!github.event.inputs.issue_number }}
+        env:
+          NEEDS_CONTEXT: ${{ toJSON(needs) }}
+          JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
+        uses: actions/github-script@v5.0.0
+        with:
+          github-token: ${{secrets.BOATSWAIN_GITHUB_TOKEN}}
+          script: |
+            const statusConfig = 'workflow,final,no-skipped,restore-separate';
+            const name = 'e2e: OpenStack';
+            const needsContext = JSON.parse(process.env.NEEDS_CONTEXT);
+            const jobContext = JSON.parse(process.env.JOB_CONTEXT);
+            const stepsContext = JSON.parse(process.env.STEPS_CONTEXT);
+
+            core.info(`needsContext: ${JSON.stringify(needsContext)}`);
+            core.info(`jobContext: ${JSON.stringify(jobContext)}`);
+            core.info(`stepsContext: ${JSON.stringify(stepsContext)}`);
+
+            const ci = require('./.github/scripts/js/ci');
+            return await ci.updateCommentOnFinish({github, context, core, statusConfig, name, needsContext, jobContext, stepsContext});
+      # </template: update_comment_on_finish>
 # </template: e2e_workflow_template>

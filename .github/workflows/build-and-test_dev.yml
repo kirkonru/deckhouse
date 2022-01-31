@@ -281,6 +281,14 @@ jobs:
     runs-on: [self-hosted, regular]
     steps:
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
       # <template: checkout_full_step>
       - name: Checkout sources
         uses: actions/checkout@v2.4.0
@@ -375,6 +383,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
       # <template: checkout_step>
       - name: Checkout sources
         uses: actions/checkout@v2.4.0
@@ -414,6 +430,14 @@ jobs:
     # <template: build_template>
     runs-on: [self-hosted, regular]
     steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_full_step>
       - name: Checkout sources
@@ -567,6 +591,14 @@ jobs:
     runs-on: [self-hosted, regular]
     steps:
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
       # <template: checkout_full_step>
       - name: Checkout sources
         uses: actions/checkout@v2.4.0
@@ -615,6 +647,14 @@ jobs:
     # <template: main_web_build_template>
     runs-on: [self-hosted, regular]
     steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_full_step>
       - name: Checkout sources
@@ -665,6 +705,14 @@ jobs:
     # <template: tests_template>
     runs-on: [self-hosted, regular]
     steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_full_step>
       - name: Checkout sources
@@ -728,6 +776,14 @@ jobs:
     runs-on: [self-hosted, regular]
     steps:
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
       # <template: checkout_full_step>
       - name: Checkout sources
         uses: actions/checkout@v2.4.0
@@ -789,6 +845,14 @@ jobs:
     # <template: tests_template>
     runs-on: [self-hosted, regular]
     steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_full_step>
       - name: Checkout sources
@@ -852,6 +916,14 @@ jobs:
     runs-on: [self-hosted, regular]
     steps:
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
       # <template: checkout_full_step>
       - name: Checkout sources
         uses: actions/checkout@v2.4.0
@@ -914,6 +986,14 @@ jobs:
     runs-on: [self-hosted, regular]
     steps:
 
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
+
       # <template: checkout_full_step>
       - name: Checkout sources
         uses: actions/checkout@v2.4.0
@@ -975,6 +1055,14 @@ jobs:
     # <template: web_links_test_template>
     runs-on: [self-hosted, regular]
     steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_full_step>
       - name: Checkout sources
@@ -1090,6 +1178,14 @@ jobs:
     # <template: tests_template>
     runs-on: [self-hosted, regular]
     steps:
+
+      # <template: started_at_output>
+      - name: Job started timestamp
+        id: started_at
+        run: |
+          unixTimestamp=$(date +%s)
+          echo "::set-output name=started_at::${unixTimestamp}"
+      # </template: started_at_output>
 
       # <template: checkout_full_step>
       - name: Checkout sources

@@ -2,7 +2,8 @@
 # <template: go_generate_template>
 runs-on: ubuntu-latest
 steps:
-  {!{ tmpl.Exec "checkout_step" . | strings.Indent 2 }!}
+  {!{ tmpl.Exec "started_at_output"            . | strings.Indent 2 }!}
+  {!{ tmpl.Exec "checkout_step"                . | strings.Indent 2 }!}
   {!{ tmpl.Exec "login_readonly_registry_step" . | strings.Indent 2 }!}
 
   - name: Run go generate
@@ -20,6 +21,7 @@ steps:
 # <template: build_modules_images_template>
 runs-on: [self-hosted, regular]
 steps:
+  {!{ tmpl.Exec "started_at_output" . | strings.Indent 2 }!}
   {!{ tmpl.Exec "checkout_full_step" . | strings.Indent 2 }!}
   {!{ tmpl.Exec "login_dev_registry_step" . | strings.Indent 2 }!}
   {!{ tmpl.Exec "login_readonly_registry_step" . | strings.Indent 2 }!}
@@ -55,6 +57,7 @@ steps:
 # <template: build_template>
 runs-on: [self-hosted, regular]
 steps:
+  {!{ tmpl.Exec "started_at_output" . | strings.Indent 2 }!}
   {!{ tmpl.Exec "checkout_full_step" . | strings.Indent 2 }!}
   {!{ tmpl.Exec "login_dev_registry_step" . | strings.Indent 2 }!}
   {!{ tmpl.Exec "login_readonly_registry_step" . | strings.Indent 2 }!}
