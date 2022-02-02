@@ -2,14 +2,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Chart.Name }}
+  name: piraeus-operator
   namespace: d8-{{ .Chart.Name }}
   {{- include "helm_lib_module_labels" (list . (dict "app" "linstor")) | nindent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ .Chart.Name }}
+  name: piraeus-operator
   namespace: d8-{{ .Chart.Name }}
   {{- include "helm_lib_module_labels" (list . (dict "app" "linstor")) | nindent 2 }}
 rules:
@@ -117,14 +117,14 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Chart.Name }}
+  name: piraeus-operator
   namespace: d8-{{ .Chart.Name }}
   {{- include "helm_lib_module_labels" (list . (dict "app" "linstor")) | nindent 2 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ .Chart.Name }}
+  name: piraeus-operator
 subjects:
 - kind: ServiceAccount
-  name: {{ .Chart.Name }}
+  name: piraeus-operator
   namespace: d8-{{ .Chart.Name }}

@@ -1,66 +1,66 @@
-{{- $context := . }}
-{{- range $linstor := $context.Values.linstor.internal.linstors }}
-  {{- if ($context.Values.global.enabledModules | has "vertical-pod-autoscaler-crd") }}
+{{- if (.Values.global.enabledModules | has "vertical-pod-autoscaler-crd") }}
 ---
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: {{ $context.Chart.Name }}-{{ $linstor.name }}
-  namespace: d8-{{ $context.Chart.Name }}
-  {{- include "helm_lib_module_labels" (list $context (dict "app" "linstor" "workload-resource-policy.deckhouse.io" "every-node")) | nindent 2 }}
+  name: piraeus-operator
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor" "workload-resource-policy.deckhouse.io" "every-node")) | nindent 2 }}
 spec:
   targetRef:
     apiVersion: "apps/v1"
     kind: Deployment
-    name: {{ $context.Chart.Name }}-{{ $linstor.name }}
+    name: piraeus-operator
   updatePolicy:
     updateMode: "Auto"
-  {{- end }}
+{{- end }}
 ---
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ $context.Chart.Name }}-{{ $linstor.name }}
-  namespace: d8-{{ $context.Chart.Name }}
-  {{- include "helm_lib_module_labels" (list $context (dict "app" "linstor" )) | nindent 2 }}
+  annotations:
+    helm.sh/hook: post-upgrade, post-install
+    helm.sh/hook-delete-policy: before-hook-creation
+  name: piraeus-operator
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator" )) | nindent 2 }}
 spec:
-  maxUnavailable: 1
+  minAvailable: {{ include "helm_lib_is_ha_to_value" (list . 1 0) }}
   selector:
     matchLabels:
-      app: {{ $context.Chart.Name }}
-      name: {{ $linstor.name }}
+      app: {{ .Chart.Name }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $context.Chart.Name }}-{{ $linstor.name }}
-  namespace: d8-{{ $context.Chart.Name }}
-  {{- include "helm_lib_module_labels" (list $context (dict "app" "linstor" )) | nindent 2 }}
+  name: piraeus-operator
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor" )) | nindent 2 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ $context.Chart.Name }}
+      app: {{ .Chart.Name }}
       name: {{ $linstor.name }}
   template:
     metadata:
       labels:
-        app: {{ $context.Chart.Name }}
+        app: {{ .Chart.Name }}
         name: {{ $linstor.name }}
     spec:
-      {{- include "helm_lib_priority_class" (tuple $context "system-cluster-critical") | nindent 6 }}
-      {{- include "helm_lib_node_selector" (tuple $context "master") | nindent 6 }}
-      {{- include "helm_lib_tolerations" (tuple $context "wildcard") | nindent 6 }}
-      {{- include "helm_lib_module_pod_security_context_run_as_user_nobody" $context | nindent 6 }}
+      {{- include "helm_lib_priority_class" (tuple . "system-cluster-critical") | nindent 6 }}
+      {{- include "helm_lib_node_selector" (tuple . "master") | nindent 6 }}
+      {{- include "helm_lib_tolerations" (tuple . "wildcard") | nindent 6 }}
+      {{- include "helm_lib_module_pod_security_context_run_as_user_nobody" . | nindent 6 }}
       imagePullSecrets:
       - name: deckhouse-registry
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      serviceAccountName: {{ $context.Chart.Name }}
+      serviceAccountName: piraeus-operator
       containers:
-      - name: linstor
-        {{- include "helm_lib_module_container_security_context_read_only_root_filesystem_capabilities_drop_all" $context | nindent 8 }}
-        image: "{{ $context.Values.global.modulesImages.registry }}:{{ $context.Values.global.modulesImages.tags.linstor.piraeusOperator }}"
+      - name: piraeus-operator
+        {{- include "helm_lib_module_container_security_context_read_only_root_filesystem_capabilities_drop_all" . | nindent 8 }}
+        image: "{{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.linstor.piraeusOperator }}"
         imagePullPolicy: IfNotPresent
         env:
         - name: WATCH_NAMESPACE
@@ -75,5 +75,4 @@ spec:
           value: "piraeus-operator"
         resources:
           requests:
-            {{- include "helm_lib_module_ephemeral_storage_only_logs" $context | nindent 12 }}
-{{- end }}
+            {{- include "helm_lib_module_ephemeral_storage_only_logs" . | nindent 12 }}
