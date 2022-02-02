@@ -9,11 +9,11 @@ positive:
       linstors:
       - name: linstor
         spec: {}
-negative:
-  configValues:
-  - {}
-  values:
-  - internal:
-      linstors:
-      - name: linstor2
-        spec: {}
+#negative:
+#  configValues:
+#  - {}
+#  values:
+#  - internal:
+#      linstors:
+#      - name: linstor2
+#        spec: {}
