@@ -5,23 +5,3 @@ properties:
   internal:
     type: object
     default: {}
-    properties:
-      linstors:
-        type: array
-        default: []
-        description: |
-          Available Linstor resources.
-        items:
-          type: object
-          required:
-          - spec
-          description: |
-            Defines the Linstor instances.
-          properties:
-            name:
-              type: string
-            spec:
-              type: object
-        x-examples:
-          - []
-          - [{"name":"linstor", "spec":{}}]
