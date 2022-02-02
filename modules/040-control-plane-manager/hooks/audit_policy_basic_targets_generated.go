@@ -66,6 +66,7 @@ var auditPolicyBasicServiceAccounts = []string{
 	"kube-state-metrics",
 	"legacy-cert-manager",
 	"legacy-webhook",
+	"linstor",
 	"local-path-provisioner",
 	"log-shipper",
 	"machine-controller-manager",
