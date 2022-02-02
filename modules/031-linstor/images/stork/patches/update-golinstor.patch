@@ -1,0 +1,4595 @@
+diff --git a/drivers/volume/linstor/linstor.go b/drivers/volume/linstor/linstor.go
+index 41e8f25240..b5faf32532 100644
+--- a/drivers/volume/linstor/linstor.go
++++ b/drivers/volume/linstor/linstor.go
+@@ -384,7 +384,7 @@ func (l *linstor) GetClusterID() (string, error) {
+ 	if err != nil {
+ 		return "", err
+ 	}
+-	props, err := cli.Nodes.GetControllerProps(context.TODO())
++	props, err := cli.Controller.GetProps(context.TODO())
+ 	if err != nil {
+ 		return "", fmt.Errorf("failed to query linstor controller properties: %w", err)
+ 	}
+@@ -400,7 +400,7 @@ func (l *linstor) GetClusterID() (string, error) {
+ 	if id == "" {
+ 		id = randString(16)
+ 		logrus.Debugf("linstor: no cluster ID found, generating new (%s)", id)
+-		err := cli.Nodes.ModifyController(context.TODO(), lclient.GenericPropsModify{
++		err := cli.Controller.Modify(context.TODO(), lclient.GenericPropsModify{
+ 			OverrideProps: lclient.OverrideProps{
+ 				"Aux/StorkClusterId": id,
+ 			},
+diff --git a/go.mod b/go.mod
+index 718f6e35a6..06c8b9748b 100644
+--- a/go.mod
++++ b/go.mod
+@@ -61,7 +61,7 @@ require (
+ )
+ 
+ replace (
+-	github.com/LINBIT/golinstor => github.com/LINBIT/golinstor v0.26.0
++	github.com/LINBIT/golinstor => github.com/LINBIT/golinstor v0.39.0
+ 	github.com/banzaicloud/k8s-objectmatcher => github.com/banzaicloud/k8s-objectmatcher v1.5.1
+ 	github.com/census-instrumentation/opencensus-proto => github.com/census-instrumentation/opencensus-proto v0.3.0
+ 	github.com/docker/distribution => github.com/docker/distribution v2.7.0+incompatible
+diff --git a/go.sum b/go.sum
+index 0337a11b33..1f59e9730d 100644
+--- a/go.sum
++++ b/go.sum
+@@ -134,6 +134,8 @@ github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab/go.mod h1:3VYc5
+ github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
+ github.com/LINBIT/golinstor v0.26.0 h1:xEGzYg+M5+wbkV33t3FMP0y+zbqWgpZJVNHs1KvHWqE=
+ github.com/LINBIT/golinstor v0.26.0/go.mod h1:p2V1Y5ppce3isjO7IBiZGOwY8R8oIm+nYZqOa77bpXM=
++github.com/LINBIT/golinstor v0.39.0 h1:coDeBklMkETBdpsB0u2dFMZSqoQnjot5rCWA5AdP8w8=
++github.com/LINBIT/golinstor v0.39.0/go.mod h1:GspbEuOx6efhdqvnBm9SUA4NPsMfdmEm8utSMfmb8eI=
+ github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd/go.mod h1:64YHyfSL2R96J44Nlwm39UHepQbyR5q10x7iYa1ks2E=
+ github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e h1:eb0Pzkt15Bm7f2FFYv7sjY7NPFi3cPkS3tv1CcrFBWA=
+ github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e/go.mod h1:64YHyfSL2R96J44Nlwm39UHepQbyR5q10x7iYa1ks2E=
+@@ -336,6 +338,7 @@ github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZ
+ github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c h1:ZfSZ3P3BedhKGUhzj7BQlPSU4OvT6tfOKe3DVHzOA7s=
+ github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
+ github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
++github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b h1:eR1P/A4QMYF2/LpHRhYAts9wyYEtF7qNk/tVNiYCWc8=
+ github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b/go.mod h1:56wL82FO0bfMU5RvfXoIwSOP2ggqqxT+tAfNEIyxuHw=
+ github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
+ github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
+@@ -1344,10 +1347,12 @@ github.com/skyrings/skyring-common v0.0.0-20160929130248-d1c0bb1cbd5e h1:jrZSSgP
+ github.com/skyrings/skyring-common v0.0.0-20160929130248-d1c0bb1cbd5e/go.mod h1:d8hQseuYt4rJoOo21lFzYJdhMjmDqLY++ayArbgYjWI=
+ github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d h1:zE9ykElWQ6/NYmHa3jpm/yHnI4xSofP+UP6SpjHcSeM=
+ github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
++github.com/smartystreets/assertions v1.2.0/go.mod h1:tcbTF8ujkAEcZ8TElKY+i30BzYlVhC/LOxJk7iOWnoo=
+ github.com/smartystreets/goconvey v0.0.0-20180222194500-ef6db91d284a/go.mod h1:XDJAKZRPZ1CvBcN2aX5YOUTYGHki24fSF0Iv48Ibg0s=
+ github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
+ github.com/smartystreets/goconvey v1.6.4 h1:fv0U8FUIMPNf1L9lnHLvLhgicrIVChEkdzIKYqbNC9s=
+ github.com/smartystreets/goconvey v1.6.4/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
++github.com/smartystreets/goconvey v1.7.2/go.mod h1:Vw0tHAZW6lzCRk3xgdin6fKYcG+G3Pg9vgXWeJpQFMM=
+ github.com/soheilhy/cmux v0.1.4/go.mod h1:IM3LyeVVIOuxMH7sFAkER9+bJ4dT7Ms6E4xg4kGIyLM=
+ github.com/sony/gobreaker v0.4.1/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJOjmxWY=
+ github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
+diff --git a/vendor/github.com/LINBIT/golinstor/.gitlab-ci.yml b/vendor/github.com/LINBIT/golinstor/.gitlab-ci.yml
+new file mode 100644
+index 0000000000..53a6dcd81e
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/.gitlab-ci.yml
+@@ -0,0 +1,13 @@
++# Use the same image version as the minimum version on go.mod
++image: golang:1.13
++
++test:
++  stage: test
++  cache:
++    paths:
++      - .mygo/pkg/mod
++  script:
++    - GOPATH=$(pwd)/.mygo go mod tidy
++    - git diff --exit-code go.mod go.sum || (echo "Run go mod tidy!" >&2 ; exit 1)
++    - GOPATH=$(pwd)/.mygo go test -coverprofile .testCoverage.txt ./client
++    - GOPATH=$(pwd)/.mygo go tool cover -func=.testCoverage.txt
+diff --git a/vendor/github.com/LINBIT/golinstor/README.md b/vendor/github.com/LINBIT/golinstor/README.md
+index db7e746ba1..4ba3e36ba1 100644
+--- a/vendor/github.com/LINBIT/golinstor/README.md
++++ b/vendor/github.com/LINBIT/golinstor/README.md
+@@ -3,12 +3,9 @@
+ This library aims to be a simple go interface for
+ [Linstor](https://github.com/LINBIT/linstor-server)
+ 
+-This library is in an early stage and does not yet have a stable API: vendor
+-this package, should you use it.
+-
+ # Documentation
+ 
+-[godocs](https://godoc.org/github.com/LINBIT/golinstor/client)
++[godocs](https://pkg.go.dev/github.com/LINBIT/golinstor/client)
+ 
+ # License
+ Apache-2.0
+diff --git a/vendor/github.com/LINBIT/golinstor/apiconsts.go b/vendor/github.com/LINBIT/golinstor/apiconsts.go
+index 7ceab9c0f3..4e888769c3 100644
+--- a/vendor/github.com/LINBIT/golinstor/apiconsts.go
++++ b/vendor/github.com/LINBIT/golinstor/apiconsts.go
+@@ -1,17 +1,16 @@
+ // This file was autogenerated by genconsts.py
+ 
+-
+ // LINSTOR - management of distributed storage/DRBD9 resources
+-// Copyright (C) 2017 - 2020  LINBIT HA-Solutions GmbH
++// Copyright (C) 2017 - 2021  LINBIT HA-Solutions GmbH
+ // All Rights Reserved.
+-// Author: Robert Altnoeder, Roland Kammerer, Gabor Hernadi
+-// 
++// Author: Robert Altnoeder, Roland Kammerer, Gabor Hernadi, Rene Peinthor
++//
+ // Licensed under the Apache License, Version 2.0 (the "License"); you may
+ // not use this file except in compliance with the License. You may obtain
+ // a copy of the License at
+-// 
++//
+ // http://www.apache.org/licenses/LICENSE-2.0
+-// 
++//
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+@@ -19,6 +18,7 @@
+ // under the License.
+ 
+ package linstor
++
+ // ## Bits 62 - 63 (most significant 2) are reserved for the message type masks (error, warning, info)
+ // Bits 25 - 26 are reserved for the operation type masks (create, modify, delete)
+ // Bits 18 - 22 are reserved for the object type masks (node, resource, resource definition, ...)
+@@ -37,6 +37,7 @@ const MaskDel = 0x0000000003000000
+ 
+ // ## Type masks (Node, ResDfn, Res, VolDfn, Vol, NetInterface, ...) ###
+ const MaskBitsObj = 0x00000000007C0000
++const MaskExtFiles = 0x0000000000500000
+ const MaskPhysicalDevice = 0x00000000004C0000
+ const MaskVlmGrp = 0x0000000000480000
+ const MaskRscGrp = 0x0000000000440000
+@@ -54,6 +55,8 @@ const MaskStorPoolDfn = 0x0000000000180000
+ const MaskStorPool = 0x0000000000140000
+ const MaskCtrlConf = 0x0000000000100000
+ const MaskSnapshot = 0x00000000000C0000
++const MaskBackup = 0x0000000000080000
++const MaskRemote = 0x0000000000040000
+ 
+ // ## Codes ###
+ const MaskBitsCode = 0x0000000000007FFF
+@@ -100,6 +103,18 @@ const FailInvldLayerStack = (225 | MaskError)
+ const FailInvldExtName = (226 | MaskError)
+ const FailInvldProvider = (227 | MaskError)
+ const FailInvldVlmSizes = (228 | MaskError)
++const FailInvldVlmCount = (229 | MaskError)
++const FailInvldConf = (230 | MaskError)
++const FailInvldSnapshotShippingSource = (231 | MaskError)
++const FailInvldSnapshotShippingTarget = (232 | MaskError)
++const FailNodeHasUsedRsc = (233 | MaskError)
++const FailInvldRequest = (234 | MaskError)
++const FailInvldExtFileName = (235 | MaskError)
++const FailInvldExtFile = (236 | MaskError)
++const FailInvldRscGrpName = (237 | MaskError)
++const FailInvldBackupConfig = (238 | MaskError)
++const FailInvldRemoteName = (239 | MaskError)
++const FailInvldTimeParam = (240 | MaskError)
+ 
+ // ## Codes 300-399: dependency not found failures ###
+ const FailNotFoundNode = (300 | MaskError)
+@@ -121,6 +136,10 @@ const FailNotFoundSnapshot = (315 | MaskError)
+ const FailNotFoundKvs = (316 | MaskError)
+ const FailNotFoundRscGrp = (317 | MaskError)
+ const FailNotFoundVlmGrp = (318 | MaskError)
++const FailNotFoundExosEnclosure = (319 | MaskError)
++const FailNotFoundExtFile = (320 | MaskError)
++const FailNotFoundRemote = (321 | MaskError)
++const FailNotFoundBackup = (322 | MaskError)
+ 
+ // ## Codes 400-499: access denied failures ###
+ const FailAccDeniedNode = (400 | MaskError)
+@@ -145,6 +164,8 @@ const FailAccDeniedKvs = (418 | MaskError)
+ const FailAccDeniedRscGrp = (419 | MaskError)
+ const FailAccDeniedVlmGrp = (420 | MaskError)
+ const FailAccDeniedSnapDfn = (421 | MaskError)
++const FailAccDeniedExtFile = (422 | MaskError)
++const FailAccDeniedRemote = (423 | MaskError)
+ 
+ // ## Codes 500-599: data already exists failures ###
+ const FailExistsNode = (500 | MaskError)
+@@ -169,6 +190,10 @@ const FailExistsNvmeInitiatorPerRscDfn = (519 | MaskError)
+ const FailLostStorPool = (521 | MaskError)
+ const FailExistsRscGrp = (522 | MaskError)
+ const FailExistsVlmGrp = (523 | MaskError)
++const FailExistsOpenflexTargetPerRscDfn = (524 | MaskError)
++const FailExistsSnapshotShipping = (525 | MaskError)
++const FailExistsExosEnclosure = (526 | MaskError)
++const FailExistsRemote = (527 | MaskError)
+ 
+ // ## Codes 600-699: data missing failures ###
+ const FailMissingProps = (600 | MaskError)
+@@ -180,6 +205,7 @@ const FailMissingStltConn = (605 | MaskError)
+ const FailMissingExtName = (606 | MaskError)
+ const FailMissingNvmeTarget = (608 | MaskError)
+ const FailNoStltConnDefined = (609 | MaskError)
++const FailMissingOpenflexTarget = (610 | MaskError)
+ 
+ // ## Codes 700-799: uuid mismatch failures ###
+ const FailUuidNode = (700 | MaskError)
+@@ -201,8 +227,22 @@ const FailPoolExhaustedMinorNr = (801 | MaskError)
+ const FailPoolExhaustedTcpPort = (802 | MaskError)
+ const FailPoolExhaustedNodeId = (803 | MaskError)
+ const FailPoolExhaustedRscLayerId = (804 | MaskError)
++const FailPoolExhaustedSpecialSatellteTcpPort = (805 | MaskError)
++const FailPoolExhaustedSnapshotShippingTcpPort = (806 | MaskError)
++const FailPoolExhaustedBackupShippingTcpPort = (807 | MaskError)
+ 
+ // ## Other failures ###
++const FailBackupIncompatibleVersion = (978 | MaskError)
++const FailDependendBackup = (978 | MaskError)
++const FailSnapshotNotUptodate = (979 | MaskError)
++const FailNotEnoughFreeSpace = (980 | MaskError)
++const FailOnlyOneActRscPerSharedStorPoolAllowed = (981 | MaskError)
++const FailCryptInit = (982 | MaskError)
++const FailSnapshotShippingNotSupported = (983 | MaskError)
++const FailSnapshotShippingInProgress = (984 | MaskError)
++const FailUndecidableAutoplacment = (985 | MaskError)
++const FailPreSelectScriptDidNotTerminate = (986 | MaskError)
++const FailLinstorManagedSatelliteDidNotStartProperly = (987 | MaskError)
+ const FailStltDoesNotSupportLayer = (988 | MaskError)
+ const FailStltDoesNotSupportProvider = (989 | MaskError)
+ const FailStorPoolConfigurationError = (990 | MaskError)
+@@ -231,6 +271,11 @@ const WarnNotFoundCryptKey = (1011 | MaskWarn)
+ const WarnStorageKindAdded = (1012 | MaskWarn)
+ const WarnNotEnoughNodesForTieBreaker = (1013 | MaskWarn)
+ const WarnMixedPmemAndNonPmem = (1014 | MaskWarn)
++const WarnUneffectiveProp = (1015 | MaskWarn)
++const WarnInvldSnapshotShippingPrefix = (1016 | MaskWarn)
++const WarnNodeEvicted = (1017 | MaskWarn)
++const WarnRscDeactivated = (1018 | MaskWarn)
++const WarnBackupDlOnly = (1019 | MaskWarn)
+ const WarnNotFound = (3000 | MaskWarn)
+ 
+ // ## Codes 10000-19999: info ###
+@@ -241,6 +286,9 @@ const InfoTieBreakerCreated = (10003 | MaskInfo)
+ const InfoTieBreakerDeleting = (10004 | MaskInfo)
+ const InfoTieBreakerTakeover = (10006 | MaskInfo)
+ const InfoPropRemoved = (10005 | MaskInfo)
++const InfoAutoDrbdProxyCreated = (10007 | MaskInfo)
++const InfoNoop = (10007 | MaskInfo)
++const InfoRscAlreadyExists = (10008 | MaskInfo)
+ 
+ // ## Special codes ###
+ const UnknownApiCall = (0x0FFFFFFFFFFFFFFF | MaskError)
+@@ -255,6 +303,7 @@ const FailSignInMissingCredentials = (10001 | MaskError)
+ // ## Special answer message content types ###
+ // Textual MsgApiCallResponse responses
+ const ApiReply = "Reply"
++
+ // Indicates that the immediate answers to the API call are complete
+ const ApiEndOfImmediateAnswers = "EndOfImmediateAnswers"
+ 
+@@ -265,19 +314,30 @@ const ApiCrtRscDfn = "CrtRscDfn"
+ const ApiCrtNetIf = "CrtNetIf"
+ const ApiCrtVlmDfn = "CrtVlmDfn"
+ const ApiCrtSnapshot = "CrtSnapshot"
++const ApiCrtBackup = "CrtBackup"
+ const ApiCrtStorPoolDfn = "CrtStorPoolDfn"
+ const ApiCrtStorPool = "CrtStorPool"
+ const ApiCrtNodeConn = "CrtNodeConn"
+ const ApiCrtRscConn = "CrtRscConn"
+ const ApiCrtVlmConn = "CrtVlmConn"
+ const ApiAutoPlaceRsc = "AutoPlaceRsc"
++const ApiCloneRscdfn = "CloneRscDfn"
++const ApiCloneRscdfnStatus = "CloneRscDfnStatus"
+ const ApiCrtCryptPass = "CrtCryptPass"
++const ApiCrtOfTargetNode = "CrtOfTargetNode"
+ const ApiRestoreVlmDfn = "RestoreVlmDfn"
+ const ApiRestoreSnapshot = "RestoreSnapshot"
+ const ApiCrtRscGrp = "CrtRscGrp"
+ const ApiCrtVlmGrp = "CrtVlmGrp"
+ const ApiSpawnRscDfn = "SpawnRscDfn"
++const ApiAdjustRscGrp = "AdjustRscGrp"
+ const ApiCreateDevicePool = "CreateDevicePool"
++const ApiMakeRscAvail = "MakeRscAvail"
++const ApiCrtExosEnclosure = "CrtExosEnclosure"
++const ApiSetRemote = "SetRemote"
++const ApiRestoreBackup = "RstBackup"
++const ApiAbortBackup = "AbortBackup"
++const ApiShipBackup = "ShipBackup"
+ 
+ // ## Modify object APIs ###
+ const ApiModNode = "ModNode"
+@@ -298,9 +358,14 @@ const ApiEnableDrbdProxy = "EnableDrbdProxy"
+ const ApiDisableDrbdProxy = "DisableDrbdProxy"
+ const ApiModDrbdProxy = "ModifyDrbdProxy"
+ const ApiRollbackSnapshot = "RollbackSnapshot"
++const ApiShipSnapshot = "ShipSnapshot"
+ const ApiModKvs = "ModifyKvs"
+ const ApiModRscGrp = "ModifyRscGrp"
+ const ApiModVlmGrp = "ModifyVlmGrp"
++const ApiActivateRsc = "ActivateRsc"
++const ApiDeactivateRsc = "DeactivateRsc"
++const ApiModExosDflts = "ModifyExosDefaults"
++const ApiModExosEnclosure = "ModExosEnclosure"
+ 
+ // ## Delete object APIs ###
+ const ApiDelNode = "DelNode"
+@@ -317,8 +382,10 @@ const ApiDelSnapshot = "DelSnapshot"
+ const ApiDelKvs = "DelKvs"
+ const ApiDelRscGrp = "DelRscGrp"
+ const ApiDelVlmGrp = "DelVlmGrp"
++const ApiDelBackup = "DelBackup"
+ const ApiLostNode = "LostNode"
+ const ApiLostStorPool = "LostStorPool"
++const ApiDelExosEnclosure = "DelExosEnclosure"
+ 
+ // ## Authentication APIs ###
+ const ApiSignIn = "SignIn"
+@@ -332,6 +399,8 @@ const ApiDstrDbgCnsl = "DstrDbgCnsl"
+ const ApiControlCtrl = "ControlCtrl"
+ const ApiCmdShutdown = "Shutdown"
+ const ApiNodeReconnect = "NodeReconnect"
++const ApiNodeRestore = "NodeRestore"
++const ApiNodeEvict = "NodeEvict"
+ 
+ // ## List object APIs ###
+ const ApiLstNode = "LstNode"
+@@ -345,12 +414,26 @@ const ApiLstStorPool = "LstStorPool"
+ const ApiLstStorPoolDfn = "LstStorPoolDfn"
+ const ApiLstErrorReports = "LstErrorReports"
+ const ApiReqErrorReports = "ReqErrorReports"
++const ApiDelErrorReport = "DelErrorReport"
++const ApiDelErrorReports = "DelErrorReports"
++const ApiReqSosReport = "ReqSosReport"
+ const ApiReqRscConnList = "ReqRscConnList"
+ const ApiLstRscConn = "LstRscConn"
+ const ApiLstKvs = "LstKvs"
+ const ApiLstRscGrp = "LstRscGrp"
+ const ApiLstVlmGrp = "LstVlmGrp"
+ const ApiLstPhysStor = "LstPhysicalStorage"
++const ApiLstSnapshotShippings = "LstSnapShips"
++const ApiLstBackups = "LstBackups"
++const ApiBackupInfo = "BackupInfo"
++const ApiLstPropsInfo = "LstPropsInfo"
++const ApiLstRemote = "LstRemote"
++const ApiLstExosDflts = "LstExosDefaults"
++const ApiLstExosEnclosures = "LstExosEnclosures"
++const ApiExosEnclosureEvents = "ExosEvents"
++const ApiExosExec = "ExosExec"
++const ApiExosMap = "ExosMap"
++const ApiLstExtFiles = "LstExtFiles"
+ 
+ // ## Query APIs ###
+ const ApiQryMaxVlmSize = "QryMaxVlmSize"
+@@ -372,58 +455,60 @@ const ApiLstCtrlProps = "LstCtrlProps"
+ // ## Encryption APIs ###
+ const ApiEnterCryptPass = "EnterCryptPass"
+ 
+-// ## Event stream actions ###
+-const EventStreamValue = "Value"
+-const EventStreamCloseNoConnection = "CloseNoConnection"
+-const EventStreamCloseRemoved = "CloseRemoved"
+-
+-// ## Events ###
+-const EventVolumeDiskState = "VlmDiskState"
+-// State of resource based on DRBD status (or other underlying system)
+-const EventResourceState = "ResourceState"
++// ## External files APIs ###
++const ApiSetExtFile = "SetExtFile"
++const ApiDelExtFile = "DeleteExtFile"
++const ApiDeployExtFile = "DeployExtFile"
++const ApiUndeployExtFile = "UndeployExtFile"
+ 
+-// ## Object property keys ###
+-const KeyKvs = "Kvs"
++// ## DRBD property keys ###
+ const KeyUuid = "UUID"
++const KeyDrbdCurrentGi = "DrbdCurrentGi"
++const KeyDmstats = "DMStats"
++const KeyDrbdAutoQuorum = "auto-quorum"
++const KeyDrbdAutoAddQuorumTiebreaker = "auto-add-quorum-tiebreaker"
++const KeyMinorNrAutoRange = "MinorNrAutoRange"
++const KeyDrbdAutoDiskful = "auto-diskful"
++const KeyDrbdAutoDiskfulAllowCleanup = "auto-diskful-allow-cleanup"
++const KeyDrbdDisableAutoVerifyAlgo = "auto-verify-algo-disable"
++const KeyDrbdAutoVerifyAlgoAllowedUser = "auto-verify-algo-allowed-user-list"
++
++// ## Node property keys ###
+ const KeyNode = "Node"
++const Key1StNode = "FirstNode"
++const Key2NdNode = "SecondNode"
++const KeyCurStltConnName = "CurStltConnName"
++
++// ## Resource property keys ###
+ const KeyRscDfn = "RscDfn"
+ const KeyRscGrp = "RscGrp"
++const KeyTcpPortAutoRange = "TcpPortAutoRange"
++const KeyPeerSlotsNewResource = "PeerSlotsNewResource"
++const KeyPeerSlots = "PeerSlots"
++const KeyRscRollbackTarget = "RollbackTarget"
++const KeyRscMigrateFrom = "MigrateFrom"
++
++// ## Volume property keys ###
+ const KeyVlmGrp = "VlmGrp"
+-const KeyStorPoolDfn = "StorPoolDfn"
+-const Key1StNode = "FirstNode"
+-const Key2NdNode = "SecondNode"
+-const KeySnapshot = "Snapshot"
+-const KeyNodeName = "NodeName"
+-const KeyNodeType = "NodeType"
+-const KeyNodeFlags = "NodeFlags"
+-const KeyNodeId = "NodeId"
+-const Key1StNodeName = "FirstNodeName"
+-const Key2NdNodeName = "SecondNodeName"
+-const KeyRscName = "RscName"
+-const KeyStorPoolName = "StorPoolName"
+-const KeyStorPoolDrbdMetaName = "StorPoolNameDrbdMeta"
+-const KeyStorPoolDrbdMetaType = "DrbdMetaType"
+-const KeyNetIfName = "NetIfName"
+-const KeySnapshotName = "SnapshotName"
+ const KeyVlmNr = "VlmNr"
+-const KeyVlmSize = "VlmSize"
+-const KeyMinorNr = "MinorNr"
+-const KeyPeerCount = "PeerCount"
+-const KeyAlSize = "AlSize"
+-const KeyAlStripes = "AlStripes"
+-const KeyId = "ID"
+-const KeyRole = "Role"
+-const KeyMissingNamespc = "MissingNameSpace"
+ const KeyVlmRestoreFromResource = "RestoreFromResource"
+ const KeyVlmRestoreFromSnapshot = "RestoreFromSnapshot"
+-const KeyDrbdCurrentGi = "DrbdCurrentGi"
+-const KeyDrbdBitmapGi = "DrbdBitmapGi"
+-const KeyDrbdHistory1Gi = "DrbdHistory1Gi"
+-const KeyDrbdHistory2Gi = "DrbdHistory2Gi"
+-const KeyDmstats = "DMStats"
++
++// ## ldap property keys ###
++const KeySearchDomain = "SearchDomain"
++
++// ## nvme property keys ###
++const KeyTrType = "TRType"
++
++// ## Snapshot property keys ###
++const KeySnapshot = "Snapshot"
+ const KeySnapshotDfnSequenceNumber = "SequenceNumber"
+-const KeyDrbdAutoQuorum = "auto-quorum"
+-const KeyDrbdAutoAddQuorumTiebreaker = "auto-add-quorum-tiebreaker"
++
++// ## Network Interface property keys ###
++const KeyPort = "Port"
++const KeyDisableHttpMetrics = "disable-http-metrics"
++
++// ## Writecache property keys ###
+ const KeyWritecacheBlocksize = "Blocksize"
+ const KeyWritecachePoolName = "PoolName"
+ const KeyWritecacheSize = "Size"
+@@ -436,6 +521,56 @@ const KeyWritecacheOptionAutocommitTime = "AutocommitTime"
+ const KeyWritecacheOptionFua = "Fua"
+ const KeyWritecacheOptionAdditional = "Additional"
+ 
++// ## Cache property keys ###
++const KeyCacheOperatingMode = "OpMode"
++const KeyCacheMetaPoolName = "MetaPool"
++const KeyCacheCachePoolName = "CachePool"
++const KeyCacheMetaSize = "Metasize"
++const KeyCacheCacheSize = "Cachesize"
++const KeyCacheBlockSize = "Blocksize"
++const KeyCachePolicy = "Policy"
++const KeyUpdateCacheInterval = "UpdateCacheInterval"
++
++// ## BCache property keys ###
++const KeyBcachePoolName = "PoolName"
++const KeyBcacheSize = "Size"
++const KeyBcacheBlocksize = "Blocksize"
++const KeyBcacheBucketsize = "Bucketsize"
++const KeyBcacheDataOffset = "DataOffset"
++const KeyBcacheWriteback = "Writeback"
++const KeyBcacheDiscard = "Discard"
++const KeyBcacheCacheReplacementPolicy = "CacheReplacementPolicy"
++
++// ## Autoplace property keys ###
++const KeyAutoplaceStratWeightMaxFreespace = "MaxFreeSpace"
++const KeyAutoplaceStratWeightMinReservedSpace = "MinReservedSpace"
++const KeyAutoplaceStratWeightMinRscCount = "MinRscCount"
++const KeyAutoplacePreSelectFileName = "PreSelectScript"
++const KeyAutoplacePreSelectScriptTimeout = "PreSelectScriptTimeout"
++const KeyAutoplaceMaxThroughput = "MaxThroughput"
++const KeySite = "Site"
++
++// ## Auto-Evict property keys ###
++const KeyAutoEvictMinReplicaCount = "AutoEvictMinReplicaCount"
++const KeyAutoEvictAfterTime = "AutoEvictAfterTime"
++const KeyAutoEvictMaxDisconnectedNodes = "AutoEvictMaxDisconnectedNodes"
++const KeyAutoEvictAllowEviction = "AutoEvictAllowEviction"
++
++// ## Snapshot shipping property keys ###
++const KeySnapshotShippingPrefix = "SnapshotShippingPrefix"
++const KeyTargetNode = "TargetNode"
++const KeySourceNode = "SourceNode"
++const KeyRunEvery = "RunEvery"
++const KeyAutoSnapshotPrefix = "Prefix"
++const KeyKeep = "Keep"
++const KeyAutoSnapshotNextId = "NextAutoId"
++const KeyTcpPortRange = "TcpPortRange"
++
++// ## Backup shipping property keys ###
++const KeyBackupTimeout = "BackupTimeout"
++const KeyBackupS3Suffix = "S3KeySuffix"
++const KeyRemote = "Remote"
++
+ // ## Property namespaces ###
+ const NamespcNetcom = "NetCom"
+ const NamespcDflt = "Default"
+@@ -443,6 +578,7 @@ const NamespcLogging = "Logging"
+ const NamespcAlloc = "Allocation"
+ const NamespcNetif = "NetIf"
+ const NamespcStlt = "Satellite"
++const NamespcNode = "Node"
+ const NamespcStorageDriver = "StorDriver"
+ const NamespcDrbdProxy = "DrbdProxy"
+ const NamespcAuxiliary = "Aux"
+@@ -461,23 +597,70 @@ const NamespcNvme = "NVMe"
+ const NamespcSysFs = "sys/fs"
+ const NamespcWritecache = "Writecache"
+ const NamespcWritecacheOptions = "Writecache/Options"
++const NamespcCache = "Cache"
++const NamespcCacheFeatures = "Cache/Features"
++const NamespcCachePolicyArgs = "Cache/Policy"
++const NamespcBcache = "BCache"
++const NamespcAutoplacer = "Autoplacer"
++const NamespcAutoplacerWeights = "Autoplacer/Weights"
++const NamespcSnapshotShipping = "SnapshotShipping"
++const NamespcAutoSnapshot = "AutoSnapshot"
++const NamespcStltDevSymlinks = "Satellite/Device/Symlinks"
++const NamespcExos = "StorDriver/Exos"
++const NamespcBackupShipping = "BackupShipping"
++const NamespcCluster = "Cluster"
++const NamespcClusterRemote = "Cluster/Remote"
+ 
+ // ## Storage pool property keys ###
++const KeyStorPoolDfn = "StorPoolDfn"
++const KeyStorPoolName = "StorPoolName"
++const KeyStorPoolDrbdMetaName = "StorPoolNameDrbdMeta"
+ const KeyStorPoolVolumeGroup = "LvmVg"
+ const KeyStorPoolLvcreateType = "LvcreateType"
++const KeyStorPoolLvcreateOptions = "LvcreateOptions"
+ const KeyStorPoolThinPool = "ThinPool"
+ const KeyStorPoolZpool = "ZPool"
+ const KeyStorPoolZpoolthin = "ZPoolThin"
++const KeyStorPoolZfsCreateOptions = "ZfscreateOptions"
+ const KeyStorPoolFileDirectory = "FileDir"
+ const KeyStorPoolPrefNic = "PrefNic"
+ const KeyStorPoolCryptPasswd = "CryptPasswd"
+ const KeyStorPoolOverrideVlmId = "OverrideVlmId"
+ const KeyStorPoolDfnMaxOversubscriptionRatio = "MaxOversubscriptionRatio"
+ const KeyStorPoolWaitTimeoutAfterCreate = "WaitTimeoutAfterCreate"
++const KeyStorPoolOpenflexApiHost = "Openflex/ApiHost"
++const KeyStorPoolOpenflexApiPort = "Openflex/ApiPort"
++const KeyStorPoolOpenflexStorDev = "Openflex/StorDev"
++const KeyStorPoolOpenflexStorDevHost = "Openflex/StorDevHost"
++const KeyStorPoolOpenflexStorPool = "Openflex/StorPool"
++const KeyStorPoolOpenflexUserName = "Openflex/UserName"
++const KeyStorPoolOpenflexUserPw = "Openflex/UserPassword"
++const KeyStorPoolOpenflexJobWaitMaxCount = "Openflex/JobWaitMaxCount"
++const KeyStorPoolOpenflexJobWaitDelay = "Openflex/JobWaitDelay"
++const KeyOfTargetPortAutoRange = "OpenflexTargetPortAutoRange"
++const KeyStorPoolExosApiIp = "IP"
++const KeyStorPoolExosApiIpEnv = "IPEnv"
++const KeyStorPoolExosApiPort = "Port"
++const KeyStorPoolExosApiUser = "Username"
++const KeyStorPoolExosApiUserEnv = "UsernameEnv"
++const KeyStorPoolExosApiPassword = "Password"
++const KeyStorPoolExosApiPasswordEnv = "PasswordEnv"
++const KeyStorPoolExosVlmType = "VolumeType"
++const KeyStorPoolExosCreateVolumeOptions = "CreateVolumeOptions"
++const KeyStorPoolExosEnclosure = "Enclosure"
++const KeyStorPoolExosPoolSn = "PoolSN"
++const KeyStorPoolRemoteSpdkApiHost = "RemoteSpdk/ApiHost"
++const KeyStorPoolRemoteSpdkApiPort = "RemoteSpdk/ApiPort"
++const KeyStorPoolRemoteSpdkApiUserName = "RemoteSpdk/UserName"
++const KeyStorPoolRemoteSpdkApiUserPw = "RemoteSpdk/UserPassword"
++const KeyStorPoolRemoteSpdkApiUserNameEnv = "RemoteSpdk/UserNameEnv"
++const KeyStorPoolRemoteSpdkApiUserPwEnv = "RemoteSpdk/UserPasswordEnv"
++const KeyPrefNic = "PrefNic"
+ 
+ // ## Storage pool traits keys ###
+ const KeyStorPoolSupportsSnapshots = "SupportsSnapshots"
+ const KeyStorPoolProvisioning = "Provisioning"
++
+ // Unit of smallest allocation. The size in KiB as a decimal number.
+ const KeyStorPoolAllocationUnit = "AllocationUnit"
+ 
+@@ -488,36 +671,7 @@ const ValStorPoolDrbdMetaInternal = ".internal"
+ 
+ // ## DRBD Proxy keys (other than 'options') ###
+ const KeyDrbdProxyCompressionType = "CompressionType"
+-
+-// ## Property keys ###
+-const KeyPortNr = "PortNr"
+-const KeyIpAddr = "IPAddr"
+-const KeyNetcomType = "NetComType"
+-const KeyNetifName = "NetIfName"
+-const KeyNetifType = "NetIfType"
+-const KeyNetcomEnabled = "NetComEnabled"
+-const KeyKeystore = "Keystore"
+-const KeyTruststore = "Truststore"
+-const KeyKeyPwd = "KeyPwd"
+-const KeyKeystorePwd = "KeystorePwd"
+-const KeyTruststorePwd = "TruststorePwd"
+-const KeySslProto = "SslProto"
+-const KeyTcpPortAutoRange = "TcpPortAutoRange"
+-const KeyMinorNrAutoRange = "MinorNrAutoRange"
+-const KeyGlobalSeqApiCalls = "GlobSeqApiCalls"
+-const KeyCurStltConnName = "CurStltConnName"
+-const KeyPeerSlotsNewResource = "PeerSlotsNewResource"
+-const KeyPeerSlots = "PeerSlots"
+-const KeyAllowLargerVolumeSize = "AllowLargerVolumeSize"
+-const KeyRscRollbackTarget = "RollbackTarget"
+-const KeyRscMigrateFrom = "MigrateFrom"
+-const KeyBindAddr = "bindAddress"
+-const KeyBindPort = "port"
+-const KeyEnabled = "enabled"
+-const KeyTrType = "enabled"
+-const KeyPort = "enabled"
+-const KeyPrefNic = "PrefNic"
+-const KeySearchDomain = "SearchDomain"
++const KeyDrbdProxyAutoEnable = "AutoEnable"
+ 
+ // ## File system property keys ###
+ const KeyFsType = "Type"
+@@ -528,6 +682,8 @@ const ValFsTypeXfs = "xfs"
+ // ## sys/fs property keys ###
+ const KeySysFsBlkioThrottleRead = "blkio_throttle_read"
+ const KeySysFsBlkioThrottleWrite = "blkio_throttle_write"
++const KeySysFsBlkioThrottleReadIops = "blkio_throttle_read_iops"
++const KeySysFsBlkioThrottleWriteIops = "blkio_throttle_write_iops"
+ 
+ // ## Property values ###
+ const ValNetcomTypeSsl = "SSL"
+@@ -549,6 +705,9 @@ const ValNodeTypeCtrl = "Controller"
+ const ValNodeTypeStlt = "Satellite"
+ const ValNodeTypeCmbd = "Combined"
+ const ValNodeTypeAux = "Auxiliary"
++const ValNodeTypeOpenflexTarget = "Openflex_Target"
++const ValNodeTypeRemoteSpdk = "Remote_Spdk"
++const ValNodeTypeExosTarget = "Exos_Target"
+ 
+ // ## Writecache option values ###
+ const ValWritecacheFuaOn = "On"
+@@ -570,6 +729,9 @@ const KeyPoolName = "PoolName"
+ // ## External commands keys ###
+ const KeyExtCmdWaitTo = "ExtCmdWaitTimeout"
+ 
++// ## External files keys ###
++const KeyExtFile = "ExtFile"
++
+ // ## Default ports ###
+ const DfltCtrlPortSsl = 3377
+ const DfltCtrlPortPlain = 3376
+@@ -579,15 +741,29 @@ const DfltStltPortPlain = 3366
+ // ## Boolean values ###
+ const ValTrue = "True"
+ const ValFalse = "False"
++const ValYes = "Yes"
++const ValNo = "No"
++
++// ## Snapshot-shipping values ###
++const ValSnapShipName = "SnapshotShipping"
++
++// enum generated in package -> "golinstor/snapshotshipstatus"
++// snapshotshipstatus.Running = "Running"
++// snapshotshipstatus.Complete = "Complete"
+ 
+ // ## Flag string values ###
+ const FlagClean = "CLEAN"
++const FlagEvicted = "EVICTED"
+ const FlagDelete = "DELETE"
+ const FlagDiskless = "DISKLESS"
+ const FlagQignore = "QIGNORE"
+ const FlagEncrypted = "ENCRYPTED"
+ const FlagGrossSize = "GROSS_SIZE"
+ const FlagSuccessful = "SUCCESSFUL"
++const FlagShipping = "SHIPPING"
++const FlagBackup = "BACKUP"
++const FlagBackupTarget = "BACKUP_TARGET"
++const FlagBackupSource = "BACKUP_SOURCE"
+ const FlagFailedDeployment = "FAILED_DEPLOYMENT"
+ const FlagFailedDisconnect = "FAILED_DISCONNECT"
+ const FlagResize = "RESIZE"
+@@ -598,19 +774,44 @@ const FlagDiskRemoveRequested = "DISK_REMOVE_REQUESTED"
+ const FlagTieBreaker = "TIE_BREAKER"
+ const FlagDrbdDiskless = "DRBD_DISKLESS"
+ const FlagNvmeInitiator = "NVME_INITIATOR"
++const FlagRscInactive = "INACTIVE"
++
++// ## Device layer kinds ###
++// enum generated in package -> "golinstor/devicelayerkind"
++// devicelayerkind.Drbd = "DRBD"
++// devicelayerkind.Luks = "LUKS"
++// devicelayerkind.Storage = "STORAGE"
++// devicelayerkind.Nvme = "NVME"
++// devicelayerkind.Openflex = "OPENFLEX"
++// devicelayerkind.Exos = "EXOS"
++// devicelayerkind.Writecache = "WRITECACHE"
++// devicelayerkind.Cache = "CACHE"
++// devicelayerkind.Bcache = "BCACHE"
+ 
+ // ## Satellite connection statuses ###
+-const ConnStatusOffline = 0
+-const ConnStatusConnected = 1
+-const ConnStatusOnline = 2
+-const ConnStatusVersionMismatch = 3
+-const ConnStatusFullSyncFailed = 4
+-const ConnStatusAuthenticationError = 5
+-const ConnStatusUnknown = 6
+-const ConnStatusHostnameMismatch = 7
+-const ConnStatusOtherController = 8
+-const ConnStatusAuthenticated = 9
+-const ConnStatusNoStltConn = 10
++// enum generated in package -> "golinstor/connectionstatus"
++// connectionstatus.Offline = 0
++// connectionstatus.Connected = 1
++// connectionstatus.Online = 2
++// connectionstatus.VersionMismatch = 3
++// connectionstatus.FullSyncFailed = 4
++// connectionstatus.AuthenticationError = 5
++// connectionstatus.Unknown = 6
++// connectionstatus.HostnameMismatch = 7
++// connectionstatus.OtherController = 8
++// connectionstatus.Authenticated = 9
++// connectionstatus.NoStltConn = 10
++
++// ## Clone states ###
++// enum generated in package -> "golinstor/clonestatus"
++// clonestatus.Failed = "FAILED"
++// clonestatus.Cloning = "CLONING"
++// clonestatus.Complete = "COMPLETE"
+ 
+ // ## Default names ###
+ const DefaultNetif = "default"
++const DfltSnapshotShippingPrefix = "ship"
++
++// ## Default values ###
++const DfltAutoSnapshotKeep = "10"
++const DfltShippedSnapshotKeep = "10"
+diff --git a/vendor/github.com/LINBIT/golinstor/client/apicallerror.go b/vendor/github.com/LINBIT/golinstor/client/apicallerror.go
+index 02d802cfd3..9da5c8b89d 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/apicallerror.go
++++ b/vendor/github.com/LINBIT/golinstor/client/apicallerror.go
+@@ -35,3 +35,13 @@ func (e ApiCallError) Is(mask uint64) bool {
+ // Refer to package apiconsts.go in package linstor for a list of possible
+ // mask values.
+ func (r ApiCallRc) Is(mask uint64) bool { return (uint64(r.RetCode) & mask) == mask }
++
++// IsApiCallError checks if an error is a specific type of LINSTOR error.
++func IsApiCallError(err error, mask uint64) bool {
++	e, ok := err.(ApiCallError)
++	if !ok {
++		return false
++	}
++
++	return e.Is(mask)
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/backup.go b/vendor/github.com/LINBIT/golinstor/client/backup.go
+new file mode 100644
+index 0000000000..88c10085c9
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/client/backup.go
+@@ -0,0 +1,233 @@
++package client
++
++import (
++	"context"
++	"errors"
++	"fmt"
++	"net/http"
++
++	"github.com/google/go-querystring/query"
++
++	"github.com/LINBIT/golinstor/devicelayerkind"
++)
++
++type Backup struct {
++	Id                string          `json:"id"`
++	StartTime         string          `json:"start_time,omitempty"`
++	StartTimestamp    *TimeStampMs    `json:"start_timestamp,omitempty"`
++	FinishedTime      string          `json:"finished_time,omitempty"`
++	FinishedTimestamp *TimeStampMs    `json:"finished_timestamp,omitempty"`
++	OriginRsc         string          `json:"origin_rsc"`
++	OriginNode        string          `json:"origin_node,omitempty"`
++	FailMessages      string          `json:"fail_messages,omitempty"`
++	Vlms              []BackupVolumes `json:"vlms"`
++	Success           bool            `json:"success,omitempty"`
++	Shipping          bool            `json:"shipping,omitempty"`
++	Restorable        bool            `json:"restorable,omitempty"`
++	S3                BackupS3        `json:"s3,omitempty"`
++	BasedOnId         string          `json:"based_on_id,omitempty"`
++}
++
++type BackupInfo struct {
++	Rsc          string               `json:"rsc"`
++	Full         string               `json:"full"`
++	Latest       string               `json:"latest"`
++	Count        int32                `json:"count,omitempty"`
++	DlSizeKib    int64                `json:"dl_size_kib"`
++	AllocSizeKib int64                `json:"alloc_size_kib"`
++	Storpools    []BackupInfoStorPool `json:"storpools"`
++}
++
++type BackupInfoRequest struct {
++	SrcRscName  string            `json:"src_rsc_name,omitempty"`
++	LastBackup  string            `json:"last_backup,omitempty"`
++	StorPoolMap map[string]string `json:"stor_pool_map,omitempty"`
++	NodeName    string            `json:"node_name,omitempty"`
++}
++
++type BackupInfoStorPool struct {
++	Name              string             `json:"name"`
++	ProviderKind      ProviderKind       `json:"provider_kind,omitempty"`
++	TargetName        string             `json:"target_name,omitempty"`
++	RemainingSpaceKib int64              `json:"remaining_space_kib,omitempty"`
++	Vlms              []BackupInfoVolume `json:"vlms"`
++}
++
++type BackupInfoVolume struct {
++	Name          string                          `json:"name,omitempty"`
++	LayerType     devicelayerkind.DeviceLayerKind `json:"layer_type"`
++	DlSizeKib     int64                           `json:"dl_size_kib,omitempty"`
++	AllocSizeKib  int64                           `json:"alloc_size_kib"`
++	UsableSizeKib int64                           `json:"usable_size_kib,omitempty"`
++}
++
++type BackupList struct {
++	// Linstor is a map of all entries found that could be parsed as LINSTOR backups.
++	Linstor map[string]Backup `json:"linstor,omitempty"`
++	// Other are files that could not be parsed as LINSTOR backups.
++	Other BackupOther `json:"other,omitempty"`
++}
++
++type BackupOther struct {
++	Files *[]string `json:"files,omitempty"`
++}
++
++type BackupRestoreRequest struct {
++	SrcRscName    string            `json:"src_rsc_name,omitempty"`
++	LastBackup    string            `json:"last_backup,omitempty"`
++	StorPoolMap   map[string]string `json:"stor_pool_map,omitempty"`
++	TargetRscName string            `json:"target_rsc_name"`
++	Passphrase    string            `json:"passphrase,omitempty"`
++	NodeName      string            `json:"node_name"`
++	DownloadOnly  bool              `json:"download_only,omitempty"`
++}
++
++type BackupS3 struct {
++	MetaName string `json:"meta_name,omitempty"`
++}
++
++type BackupAbortRequest struct {
++	RscName string `json:"rsc_name"`
++	Restore *bool  `json:"restore,omitempty"`
++	Create  *bool  `json:"create,omitempty"`
++}
++
++type BackupCreate struct {
++	RscName     string `json:"rsc_name"`
++	NodeName    string `json:"node_name,omitempty"`
++	Incremental bool   `json:"incremental,omitempty"`
++}
++
++type BackupShipRequest struct {
++	SrcNodeName    string            `json:"src_node_name,omitempty"`
++	SrcRscName     string            `json:"src_rsc_name"`
++	DstRscName     string            `json:"dst_rsc_name"`
++	DstNodeName    string            `json:"dst_node_name,omitempty"`
++	DstNetIfName   string            `json:"dst_net_if_name,omitempty"`
++	DstStorPool    string            `json:"dst_stor_pool,omitempty"`
++	StorPoolRename map[string]string `json:"stor_pool_rename,omitempty"`
++	DownloadOnly   *bool             `json:"download_only,omitempty"`
++}
++
++type BackupVolumes struct {
++	VlmNr             int64            `json:"vlm_nr"`
++	FinishedTime      *string          `json:"finished_time,omitempty"`
++	FinishedTimestamp *TimeStampMs     `json:"finished_timestamp,omitempty"`
++	S3                *BackupVolumesS3 `json:"s3,omitempty"`
++}
++
++type BackupVolumesS3 struct {
++	Key *string `json:"key,omitempty"`
++}
++
++type BackupDeleteOpts struct {
++	ID              string       `url:"id,omitempty"`
++	IDPrefix        string       `url:"id_prefix,omitempty"`
++	Cascading       bool         `url:"cascading,omitempty"`
++	Timestamp       *TimeStampMs `url:"timestamp,omitempty"`
++	ResourceName    string       `url:"resource_name,omitempty"`
++	NodeName        string       `url:"node_name,omitempty"`
++	AllLocalCluster bool         `url:"all_local_cluster,omitempty"`
++	All             bool         `url:"all,omitempty"`
++	S3Key           string       `url:"s3key,omitempty"`
++	S3KeyForce      string       `url:"s3key_force,omitempty"`
++	DryRun          bool         `url:"dryrun,omitempty"`
++}
++
++type BackupProvider interface {
++	// GetAll fetches information on all backups stored at the given remote. Optionally limited to the given
++	// resource names.
++	GetAll(ctx context.Context, remoteName string, rscNames ...string) (BackupList, error)
++	// DeleteAll backups that fit the given criteria.
++	DeleteAll(ctx context.Context, remoteName string, filter BackupDeleteOpts) error
++	// Create a new backup operation.
++	Create(ctx context.Context, remoteName string, request BackupCreate) (string, error)
++	// Info retrieves information about a specific backup instance.
++	Info(ctx context.Context, remoteName string, request BackupInfoRequest) (BackupInfo, error)
++	// Abort all running backup operations of a resource.
++	Abort(ctx context.Context, remoteName string, request BackupAbortRequest) error
++	// Ship ships a backup from one LINSTOR cluster to another.
++	Ship(ctx context.Context, remoteName string, request BackupShipRequest) error
++	// Restore starts to restore a resource from a backup.
++	Restore(ctx context.Context, remoteName string, request BackupRestoreRequest) error
++}
++
++var _ BackupProvider = &BackupService{}
++
++type BackupService struct {
++	client *Client
++}
++
++func (b *BackupService) GetAll(ctx context.Context, remoteName string, rscNames ...string) (BackupList, error) {
++	vals, err := query.Values(struct {
++		ResourceName []string `url:"rsc_name"`
++	}{ResourceName: rscNames})
++	if err != nil {
++		return BackupList{}, fmt.Errorf("failed to encode resource names: %w", err)
++	}
++
++	var list BackupList
++	_, err = b.client.doGET(ctx, "/v1/remotes/"+remoteName+"/backups?"+vals.Encode(), &list)
++	return list, err
++}
++
++func (b *BackupService) DeleteAll(ctx context.Context, remoteName string, filter BackupDeleteOpts) error {
++	vals, err := query.Values(filter)
++	if err != nil {
++		return fmt.Errorf("failed to encode filter options: %w", err)
++	}
++
++	_, err = b.client.doDELETE(ctx, "/v1/remotes/"+remoteName+"/backups?"+vals.Encode(), nil)
++	return err
++}
++
++func (b *BackupService) Create(ctx context.Context, remoteName string, request BackupCreate) (string, error) {
++	req, err := b.client.newRequest(http.MethodPost, "/v1/remotes/"+remoteName+"/backups", request)
++	if err != nil {
++		return "", err
++	}
++
++	var resp []ApiCallRc
++	_, err = b.client.do(ctx, req, &resp)
++	if err != nil {
++		return "", err
++	}
++
++	for _, rc := range resp {
++		if s, ok := rc.ObjRefs["Snapshot"]; ok {
++			return s, nil
++		}
++	}
++
++	return "", errors.New("missing snapshot reference")
++}
++
++func (b *BackupService) Info(ctx context.Context, remoteName string, request BackupInfoRequest) (BackupInfo, error) {
++	req, err := b.client.newRequest(http.MethodPost, "/v1/remotes/"+remoteName+"/backups/info", request)
++	if err != nil {
++		return BackupInfo{}, err
++	}
++
++	var resp BackupInfo
++	_, err = b.client.do(ctx, req, &resp)
++	if err != nil {
++		return BackupInfo{}, err
++	}
++
++	return resp, nil
++}
++
++func (b *BackupService) Abort(ctx context.Context, remoteName string, request BackupAbortRequest) error {
++	_, err := b.client.doPOST(ctx, "/v1/remotes/"+remoteName+"/backups/abort", request)
++	return err
++}
++
++func (b *BackupService) Ship(ctx context.Context, remoteName string, request BackupShipRequest) error {
++	_, err := b.client.doPOST(ctx, "/v1/remotes/"+remoteName+"/backups/ship", request)
++	return err
++}
++
++func (b *BackupService) Restore(ctx context.Context, remoteName string, request BackupRestoreRequest) error {
++	_, err := b.client.doPOST(ctx, "/v1/remotes/"+remoteName+"/backups/restore", request)
++	return err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/client.go b/vendor/github.com/LINBIT/golinstor/client/client.go
+index 5976f654f4..3f768273bf 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/client.go
++++ b/vendor/github.com/LINBIT/golinstor/client/client.go
+@@ -27,29 +27,39 @@ import (
+ 	"fmt"
+ 	"io"
+ 	"log"
++	"net"
+ 	"net/http"
+ 	"net/url"
+ 	"os"
+ 	"strings"
++	"sync"
++	"time"
+ 
++	"github.com/donovanhide/eventsource"
+ 	"github.com/moul/http2curl"
+ 	"golang.org/x/time/rate"
+ )
+ 
+ // Client is a struct representing a LINSTOR REST client.
+ type Client struct {
+-	httpClient *http.Client
+-	baseURL    *url.URL
+-	basicAuth  *BasicAuthCfg
+-	lim        *rate.Limiter
+-	log        interface{} // must be either Logger or LeveledLogger
+-
+-	Nodes                  *NodeService
+-	ResourceDefinitions    *ResourceDefinitionService
+-	Resources              *ResourceService
+-	ResourceGroups         *ResourceGroupService
+-	StoragePoolDefinitions *StoragePoolDefinitionService
+-	Encryption             *EncryptionService
++	httpClient  *http.Client
++	baseURL     *url.URL
++	basicAuth   *BasicAuthCfg
++	controllers []*url.URL
++	lim         *rate.Limiter
++	log         interface{} // must be either Logger or LeveledLogger
++
++	Nodes                  NodeProvider
++	ResourceDefinitions    ResourceDefinitionProvider
++	Resources              ResourceProvider
++	ResourceGroups         ResourceGroupProvider
++	StoragePoolDefinitions StoragePoolDefinitionProvider
++	Encryption             EncryptionProvider
++	Controller             ControllerProvider
++	Events                 EventProvider
++	Vendor                 VendorProvider
++	Remote                 RemoteProvider
++	Backup                 BackupProvider
+ }
+ 
+ // Logger represents a standard logger interface
+@@ -74,8 +84,22 @@ type clientError string
+ 
+ func (e clientError) Error() string { return string(e) }
+ 
+-// NotFoundError is the error type returned in case of a 404 error. This is required to test for this kind of error.
+-const NotFoundError = clientError("404 Not Found")
++const (
++	// NotFoundError is the error type returned in case of a 404 error. This is required to test for this kind of error.
++	NotFoundError = clientError("404 Not Found")
++	// Name of the environment variable that stores the certificate used for TLS client authentication
++	UserCertEnv = "LS_USER_CERTIFICATE"
++	// Name of the environment variable that stores the key used for TLS client authentication
++	UserKeyEnv = "LS_USER_KEY"
++	// Name of the environment variable that stores the certificate authority for the LINSTOR HTTPS API
++	RootCAEnv = "LS_ROOT_CA"
++	// Name of the environment variable that holds the URL(s) of LINSTOR controllers
++	ControllerUrlEnv = "LS_CONTROLLERS"
++	// Name of the environment variable that holds the username for authentication
++	UsernameEnv = "LS_USERNAME"
++	// Name of the environment variable that holds the password for authentication
++	PasswordEnv = "LS_PASSWORD"
++)
+ 
+ // For example:
+ // u, _ := url.Parse("http://somehost:3370")
+@@ -133,6 +157,14 @@ func Limit(r rate.Limit, b int) Option {
+ 	}
+ }
+ 
++func Controllers(controllers []string) Option {
++	return func(c *Client) error {
++		var err error
++		c.controllers, err = parseURLs(controllers)
++		return err
++	}
++}
++
+ // buildHttpClient constructs an HTTP client which will be used to connect to
+ // the LINSTOR controller. It recongnizes some environment variables which can
+ // be used to configure the HTTP client at runtime. If an invalid key or
+@@ -140,39 +172,165 @@ func Limit(r rate.Limit, b int) Option {
+ // If none or not all of the environment variables are passed, the default
+ // client is used as a fallback.
+ func buildHttpClient() (*http.Client, error) {
+-	certPEM, cert := os.LookupEnv("LS_USER_CERTIFICATE")
+-	keyPEM, key := os.LookupEnv("LS_USER_KEY")
+-	caPEM, ca := os.LookupEnv("LS_ROOT_CA")
+-	if !(cert && key && ca) {
+-		// not all environment variables found: fall back to default client
++	certPEM, cert := os.LookupEnv(UserCertEnv)
++	keyPEM, key := os.LookupEnv(UserKeyEnv)
++	caPEM, ca := os.LookupEnv(RootCAEnv)
++
++	if key != cert {
++		return nil, fmt.Errorf("'%s', '%s': specify both or none", UserKeyEnv, UserCertEnv)
++	}
++
++	if !cert && !key && !ca {
++		// Non of the special variables was set -> if TLS is used, default configuration can be used
+ 		return http.DefaultClient, nil
+ 	}
+ 
+-	keyPair, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+-	if err != nil {
+-		return nil, fmt.Errorf("failed to load keys: %w", err)
++	tlsConfig := &tls.Config{}
++
++	if ca {
++		caPool := x509.NewCertPool()
++		ok := caPool.AppendCertsFromPEM([]byte(caPEM))
++		if !ok {
++			return nil, fmt.Errorf("failed to get a valid certificate from '%s'", RootCAEnv)
++		}
++		tlsConfig.RootCAs = caPool
+ 	}
+-	caPool := x509.NewCertPool()
+-	ok := caPool.AppendCertsFromPEM([]byte(caPEM))
+-	if !ok {
+-		return nil, fmt.Errorf("failed to get a valid certificate from LS_ROOT_CA")
++
++	if key && cert {
++		keyPair, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
++		if err != nil {
++			return nil, fmt.Errorf("failed to load keys: %w", err)
++		}
++		tlsConfig.Certificates = append(tlsConfig.Certificates, keyPair)
+ 	}
++
+ 	return &http.Client{
+ 		Transport: &http.Transport{
+-			TLSClientConfig: &tls.Config{
+-				Certificates: []tls.Certificate{keyPair},
+-				RootCAs:      caPool,
+-			},
++			TLSClientConfig: tlsConfig,
+ 		},
+ 	}, nil
+ }
+ 
++// Return the default scheme to access linstor
++// If one of the HTTPS environment variables is set, will return "https".
++// If not, will return "http"
++func defaultScheme() string {
++	_, ca := os.LookupEnv(RootCAEnv)
++	_, cert := os.LookupEnv(UserCertEnv)
++	_, key := os.LookupEnv(UserKeyEnv)
++	if ca || cert || key {
++		return "https"
++	}
++	return "http"
++}
++
++const defaultHost = "localhost"
++
++// Return the default port to access linstor.
++// Defaults are:
++// "https": 3371
++// "http":  3370
++func defaultPort(scheme string) string {
++	if scheme == "https" {
++		return "3371"
++	}
++	return "3370"
++}
++
++// tryConnect takes a slice of urls and tries to Dial each one of the hosts.
++// If a working URL is found, it is returned.
++// If the slice contains no working URL, a list of all connection errors is returned.
++func tryConnect(urls []*url.URL) (*url.URL, []error) {
++	var wg sync.WaitGroup
++	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
++	defer cancel()
++	errChan := make(chan error)
++	indexChan := make(chan int)
++	doneChan := make(chan bool)
++	wg.Add(len(urls))
++	for i := range urls {
++		i := i
++		go func() {
++			defer wg.Done()
++			conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", urls[i].Host)
++			if err != nil {
++				errChan <- err
++				return
++			}
++			cancel()
++			conn.Close()
++			indexChan <- i
++		}()
++	}
++
++	go func() {
++		wg.Wait()
++		doneChan <- true
++	}()
++
++	var errs []error
++	for {
++		select {
++		case result := <-indexChan:
++			return urls[result], nil
++		case err := <-errChan:
++			errs = append(errs, err)
++		case <-doneChan:
++			return nil, errs
++		}
++	}
++}
++
++func parseBaseURL(urlString string) (*url.URL, error) {
++	// Check scheme
++	urlSplit := strings.Split(urlString, "://")
++
++	if len(urlSplit) == 1 {
++		if urlSplit[0] == "" {
++			urlSplit[0] = defaultHost
++		}
++		urlSplit = []string{defaultScheme(), urlSplit[0]}
++	}
++
++	if len(urlSplit) != 2 {
++		return nil, fmt.Errorf("URL with multiple scheme separators. parts: %v", urlSplit)
++	}
++	scheme, endpoint := urlSplit[0], urlSplit[1]
++	if scheme == "linstor" {
++		scheme = defaultScheme()
++	}
++
++	// Check port
++	endpointSplit := strings.Split(endpoint, ":")
++	if len(endpointSplit) == 1 {
++		endpointSplit = []string{endpointSplit[0], defaultPort(scheme)}
++	}
++	if len(endpointSplit) != 2 {
++		return nil, fmt.Errorf("URL with multiple port separators. parts: %v", endpointSplit)
++	}
++	host, port := endpointSplit[0], endpointSplit[1]
++
++	return url.Parse(fmt.Sprintf("%s://%s:%s", scheme, host, port))
++}
++
++func parseURLs(urls []string) ([]*url.URL, error) {
++	var result []*url.URL
++	for _, controller := range urls {
++		url, err := parseBaseURL(controller)
++		if err != nil {
++			return nil, err
++		}
++		result = append(result, url)
++	}
++
++	return result, nil
++}
++
+ // NewClient takes an arbitrary number of options and returns a Client or an error.
+ // It recognizes several environment variables which can be used to configure
+ // the client at runtime:
+ //
+ // - LS_CONTROLLERS: a comma-separated list of LINSTOR controllers to connect to.
+-// Currently, golinstor will only use the first one.
+ //
+ // - LS_USERNAME, LS_PASSWORD: can be used to authenticate against the LINSTOR
+ // controller using HTTP basic authentication.
+@@ -188,41 +346,42 @@ func NewClient(options ...Option) (*Client, error) {
+ 		return nil, fmt.Errorf("failed to build http client: %w", err)
+ 	}
+ 
+-	hostPort := "localhost:3370"
+-	controllers := os.Getenv("LS_CONTROLLERS")
+-	// we could ping them, for now use the first if possible
+-	if controllers != "" {
+-		hostPort = strings.Split(controllers, ",")[0]
+-
+-		lsPrefix := "linstor://"
+-		if strings.HasPrefix(hostPort, lsPrefix) {
+-			hostPort = strings.TrimPrefix(hostPort, lsPrefix)
+-		}
++	c := &Client{
++		httpClient: httpClient,
++		basicAuth: &BasicAuthCfg{
++			Username: os.Getenv(UsernameEnv),
++			Password: os.Getenv(PasswordEnv),
++		},
++		lim: rate.NewLimiter(rate.Inf, 0),
++		log: log.New(os.Stderr, "", 0),
+ 	}
+ 
+-	if !strings.Contains(hostPort, ":") {
+-		hostPort += ":3370"
++	for _, opt := range options {
++		if err := opt(c); err != nil {
++			return nil, err
++		}
+ 	}
+ 
+-	u := hostPort
+-	if !strings.HasPrefix(hostPort, "http://") {
+-		u = "http://" + hostPort
+-	}
++	if c.baseURL == nil {
++		if len(c.controllers) == 0 {
++			// if not already set by option, get from environment...
++			controllersStr := os.Getenv(ControllerUrlEnv)
++			if controllersStr == "" {
++				// ... or fall back to defaults
++				controllersStr = fmt.Sprintf("%v://%v:%v", defaultScheme(), defaultHost, defaultPort(defaultScheme()))
++			}
+ 
+-	baseURL, err := url.Parse(u)
+-	if err != nil {
+-		return nil, err
+-	}
++			c.controllers, err = parseURLs(strings.Split(controllersStr, ","))
++			if err != nil {
++				return nil, fmt.Errorf("failed to parse controller URLs: %w", err)
++			}
++		}
+ 
+-	c := &Client{
+-		httpClient: httpClient,
+-		baseURL:    baseURL,
+-		basicAuth: &BasicAuthCfg{
+-			Username: os.Getenv("LS_USERNAME"),
+-			Password: os.Getenv("LS_PASSWORD"),
+-		},
+-		lim: rate.NewLimiter(rate.Inf, 0),
+-		log: log.New(os.Stdout, "", 0),
++		// if we have exactly one controller, use that directly, otherwise the
++		// controller will be figured out in findRespondingController().
++		if len(c.controllers) == 1 {
++			c.baseURL = c.controllers[0]
++		}
+ 	}
+ 
+ 	c.Nodes = &NodeService{client: c}
+@@ -231,12 +390,11 @@ func NewClient(options ...Option) (*Client, error) {
+ 	c.Encryption = &EncryptionService{client: c}
+ 	c.ResourceGroups = &ResourceGroupService{client: c}
+ 	c.StoragePoolDefinitions = &StoragePoolDefinitionService{client: c}
+-
+-	for _, opt := range options {
+-		if err := opt(c); err != nil {
+-			return nil, err
+-		}
+-	}
++	c.Controller = &ControllerService{client: c}
++	c.Events = &EventService{client: c}
++	c.Vendor = &VendorService{client: c}
++	c.Remote = &RemoteService{client: c}
++	c.Backup = &BackupService{client: c}
+ 
+ 	return c, nil
+ }
+@@ -246,6 +404,17 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
+ 	if err != nil {
+ 		return nil, err
+ 	}
++
++	if c.baseURL == nil {
++		if err := c.findRespondingController(); err != nil {
++			return nil, fmt.Errorf("failed to connect: %w", err)
++		}
++		if c.baseURL == nil {
++			// should not happen since findRespondingController()
++			// always either sets baseURL or errors out, but just in case...
++			return nil, fmt.Errorf("failed to determine base URL")
++		}
++	}
+ 	u := c.baseURL.ResolveReference(rel)
+ 
+ 	var buf io.ReadWriter
+@@ -288,6 +457,39 @@ func (c *Client) curlify(req *http.Request) (string, error) {
+ 	return cc.String(), nil
+ }
+ 
++// findRespondingController scans the list of controllers for a working LINSTOR
++// controller. It sets the baseURL of the client to the first working controller
++// that is found.  If there is only exactly one controller in the controller
++// list, it is used directly.
++func (c *Client) findRespondingController() error {
++	switch num := len(c.controllers); {
++	case num > 1:
++		url, errors := tryConnect(c.controllers)
++		if errors != nil {
++			logError := func(msg string) {
++				switch l := c.log.(type) {
++				case LeveledLogger:
++					l.Errorf(msg)
++				case Logger:
++					l.Printf("[ERROR] %s", msg)
++				}
++			}
++			logError("Unable to connect to any of the given controller hosts:")
++			for _, e := range errors {
++				logError(fmt.Sprintf("   - %v", e))
++			}
++			return fmt.Errorf("could not connect to any controller")
++		}
++		c.baseURL = url
++	case num == 1:
++		c.baseURL = c.controllers[0]
++	default:
++		return fmt.Errorf("no controller to connect to")
++	}
++
++	return nil
++}
++
+ func (c *Client) logCurlify(req *http.Request) {
+ 	var msg string
+ 	if curl, err := c.curlify(req); err != nil {
+@@ -304,6 +506,23 @@ func (c *Client) logCurlify(req *http.Request) {
+ 	}
+ }
+ 
++func (c *Client) retry(origErr error, req *http.Request) (*http.Response, error) {
++	// only retry on network errors and if we even have another controller to choose from
++	if _, ok := origErr.(net.Error); !ok || len(c.controllers) <= 1 {
++		return nil, origErr
++	}
++
++	prevBaseURL := c.baseURL
++	e := c.findRespondingController()
++	// if findRespondingController failed, or we just got the same base URL, don't bother retrying
++	if e != nil && c.baseURL == prevBaseURL {
++		return nil, origErr
++	}
++
++	req.URL.Host = c.baseURL.Host
++	return c.httpClient.Do(req)
++}
++
+ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
+ 	if err := c.lim.Wait(ctx); err != nil {
+ 		return nil, err
+@@ -320,7 +539,11 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*htt
+ 		default:
+ 		}
+ 
+-		return nil, err
++		// if this was a connectivity issue, attempt a retry
++		resp, err = c.retry(err, req)
++		if err != nil {
++			return nil, err
++		}
+ 	}
+ 	defer resp.Body.Close()
+ 
+@@ -366,6 +589,22 @@ func (c *Client) doGET(ctx context.Context, url string, ret interface{}, opts ..
+ 	return c.do(ctx, req, ret)
+ }
+ 
++func (c *Client) doEvent(ctx context.Context, url, lastEventId string) (*eventsource.Stream, error) {
++	req, err := c.newRequest("GET", url, nil)
++	if err != nil {
++		return nil, err
++	}
++	req.Header.Set("Accept", "text/event-stream")
++	req = req.WithContext(ctx)
++
++	stream, err := eventsource.SubscribeWith(lastEventId, c.httpClient, req)
++	if err != nil {
++		return nil, err
++	}
++
++	return stream, nil
++}
++
+ func (c *Client) doPOST(ctx context.Context, url string, body interface{}) (*http.Response, error) {
+ 	req, err := c.newRequest("POST", url, body)
+ 	if err != nil {
+diff --git a/vendor/github.com/LINBIT/golinstor/client/controller.go b/vendor/github.com/LINBIT/golinstor/client/controller.go
+new file mode 100644
+index 0000000000..97ad9b1491
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/client/controller.go
+@@ -0,0 +1,323 @@
++// Copyright (C) LINBIT HA-Solutions GmbH
++// All Rights Reserved.
++// Author: Roland Kammerer <roland.kammerer@linbit.com>
++//
++// Licensed under the Apache License, Version 2.0 (the "License"); you may
++// not use this file except in compliance with the License. You may obtain
++// a copy of the License at
++//
++// http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++// License for the specific language governing permissions and limitations
++// under the License.
++
++package client
++
++import (
++	"context"
++	"encoding/base64"
++	"encoding/json"
++	"fmt"
++	"net/url"
++	"strconv"
++	"time"
++)
++
++// copy & paste from generated code
++
++// ControllerVersion represents version information of the LINSTOR controller
++type ControllerVersion struct {
++	Version        string `json:"version,omitempty"`
++	GitHash        string `json:"git_hash,omitempty"`
++	BuildTime      string `json:"build_time,omitempty"`
++	RestApiVersion string `json:"rest_api_version,omitempty"`
++}
++
++// ErrorReport struct for ErrorReport
++type ErrorReport struct {
++	NodeName  string      `json:"node_name,omitempty"`
++	ErrorTime TimeStampMs `json:"error_time"`
++	// Filename of the error report on the server.  Format is: ```ErrorReport-{instanceid}-{nodeid}-{sequencenumber}.log```
++	Filename string `json:"filename,omitempty"`
++	// Contains the full text of the error report file.
++	Text string `json:"text,omitempty"`
++	// Which module this error occurred.
++	Module string `json:"module,omitempty"`
++	// Linstor version this error report was created.
++	Version string `json:"version,omitempty"`
++	// Peer client that was involved.
++	Peer string `json:"peer,omitempty"`
++	// Exception that occurred
++	Exception string `json:"exception,omitempty"`
++	// Exception message
++	ExceptionMessage string `json:"exception_message,omitempty"`
++	// Origin file of the exception
++	OriginFile string `json:"origin_file,omitempty"`
++	// Origin method where the exception occurred
++	OriginMethod string `json:"origin_method,omitempty"`
++	// Origin line number
++	OriginLine int32 `json:"origin_line,omitempty"`
++}
++
++type ErrorReportDelete struct {
++	Since *TimeStampMs `json:"since,omitempty"`
++	To    *TimeStampMs `json:"to,omitempty"`
++	// on which nodes to delete error-reports, if empty/null all nodes
++	Nodes []string `json:"nodes,omitempty"`
++	// delete all error reports with the given exception
++	Exception string `json:"exception,omitempty"`
++	// delete all error reports from the given version
++	Version string `json:"version,omitempty"`
++	// error report ids to delete
++	Ids []string `json:"ids,omitempty"`
++}
++
++type PropsInfo struct {
++	Info     string `json:"info,omitempty"`
++	PropType string `json:"prop_type,omitempty"`
++	Value    string `json:"value,omitempty"`
++	Dflt     string `json:"dflt,omitempty"`
++	Unit     string `json:"unit,omitempty"`
++}
++
++// ExternalFile is an external file which can be configured to be deployed by Linstor
++type ExternalFile struct {
++	Path    string
++	Content []byte
++}
++
++// externalFileBase64 is a golinstor-internal type which represents an external
++// file as it is handled by the LINSTOR API. The API expects files to come in
++// base64 encoding, and also returns files in base64 encoding. To make golinstor
++// easier to use, we only present the ExternalFile type to our users an
++// transparently handle the base64 encoding/decoding.
++type externalFileBase64 struct {
++	Path          string `json:"path,omitempty"`
++	ContentBase64 string `json:"content,omitempty"`
++}
++
++func (e *ExternalFile) UnmarshalJSON(text []byte) error {
++	v := externalFileBase64{}
++	err := json.Unmarshal(text, &v)
++	if err != nil {
++		return err
++	}
++	e.Path = v.Path
++	e.Content, err = base64.StdEncoding.DecodeString(v.ContentBase64)
++	if err != nil {
++		return err
++	}
++	return nil
++}
++
++func (e *ExternalFile) MarshalJSON() ([]byte, error) {
++	v := externalFileBase64{
++		Path:          e.Path,
++		ContentBase64: base64.StdEncoding.EncodeToString(e.Content),
++	}
++	return json.Marshal(v)
++}
++
++// custom code
++
++// ControllerProvider acts as an abstraction for a ControllerService. It can be
++// swapped out for another ControllerService implementation, for example for
++// testing.
++type ControllerProvider interface {
++	// GetVersion queries version information for the controller.
++	GetVersion(ctx context.Context, opts ...*ListOpts) (ControllerVersion, error)
++	// GetConfig queries the configuration of a controller
++	GetConfig(ctx context.Context, opts ...*ListOpts) (ControllerConfig, error)
++	// Modify modifies the controller node and sets/deletes the given properties.
++	Modify(ctx context.Context, props GenericPropsModify) error
++	// GetProps gets all properties of a controller
++	GetProps(ctx context.Context, opts ...*ListOpts) (ControllerProps, error)
++	// DeleteProp deletes the given property/key from the controller object.
++	DeleteProp(ctx context.Context, prop string) error
++	// GetErrorReports returns all error reports. The Text field is not populated,
++	// use GetErrorReport to get the text of an error report.
++	GetErrorReports(ctx context.Context, opts ...*ListOpts) ([]ErrorReport, error)
++	// DeleteErrorReports deletes error reports as specified by the ErrorReportDelete struct.
++	DeleteErrorReports(ctx context.Context, del ErrorReportDelete) error
++	// GetErrorReportsSince returns all error reports created after a certain point in time.
++	GetErrorReportsSince(ctx context.Context, since time.Time, opts ...*ListOpts) ([]ErrorReport, error)
++	// GetErrorReport returns a specific error report, including its text.
++	GetErrorReport(ctx context.Context, id string, opts ...*ListOpts) (ErrorReport, error)
++	// CreateSOSReport creates an SOS report in the log directory of the controller
++	CreateSOSReport(ctx context.Context, opts ...*ListOpts) error
++	// DownloadSOSReport request sos report to download
++	DownloadSOSReport(ctx context.Context, opts ...*ListOpts) error
++	GetSatelliteConfig(ctx context.Context, node string) (SatelliteConfig, error)
++	ModifySatelliteConfig(ctx context.Context, node string, cfg SatelliteConfig) error
++	// GetPropsInfos gets meta information about the properties that can be
++	// set on a controller.
++	GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetPropsInfosAll gets meta information about all properties that can
++	// be set on a controller and all entities it contains (nodes, resource
++	// definitions, ...).
++	GetPropsInfosAll(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetExternalFiles gets a list of previously registered external files.
++	GetExternalFiles(ctx context.Context, opts ...*ListOpts) ([]ExternalFile, error)
++	// GetExternalFile gets the requested external file including its content
++	GetExternalFile(ctx context.Context, name string) (ExternalFile, error)
++	// ModifyExternalFile registers or modifies a previously registered
++	// external file
++	ModifyExternalFile(ctx context.Context, name string, file ExternalFile) error
++	// DeleteExternalFile deletes the given external file. This effectively
++	// also deletes the file on all satellites
++	DeleteExternalFile(ctx context.Context, name string) error
++}
++
++// ControllerService is the service that deals with the LINSTOR controller.
++type ControllerService struct {
++	client *Client
++}
++
++// GetVersion queries version information for the controller.
++func (s *ControllerService) GetVersion(ctx context.Context, opts ...*ListOpts) (ControllerVersion, error) {
++	var vers ControllerVersion
++	_, err := s.client.doGET(ctx, "/v1/controller/version", &vers, opts...)
++	return vers, err
++}
++
++// GetConfig queries the configuration of a controller
++func (s *ControllerService) GetConfig(ctx context.Context, opts ...*ListOpts) (ControllerConfig, error) {
++	var cfg ControllerConfig
++	_, err := s.client.doGET(ctx, "/v1/controller/config", &cfg, opts...)
++	return cfg, err
++}
++
++// Modify modifies the controller node and sets/deletes the given properties.
++func (s *ControllerService) Modify(ctx context.Context, props GenericPropsModify) error {
++	_, err := s.client.doPOST(ctx, "/v1/controller/properties", props)
++	return err
++}
++
++type ControllerProps map[string]string
++
++// GetProps gets all properties of a controller
++func (s *ControllerService) GetProps(ctx context.Context, opts ...*ListOpts) (ControllerProps, error) {
++	var props ControllerProps
++	_, err := s.client.doGET(ctx, "/v1/controller/properties", &props, opts...)
++	return props, err
++}
++
++// DeleteProp deletes the given property/key from the controller object.
++func (s *ControllerService) DeleteProp(ctx context.Context, prop string) error {
++	_, err := s.client.doDELETE(ctx, "/v1/controller/properties/"+prop, nil)
++	return err
++}
++
++// GetPropsInfos gets meta information about the properties that can be set on
++// a controller.
++func (s *ControllerService) GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := s.client.doGET(ctx, "/v1/controller/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// GetPropsInfosAll gets meta information about all properties that can be set
++// on a controller and all entities it contains (nodes, resource definitions, ...).
++func (s *ControllerService) GetPropsInfosAll(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := s.client.doGET(ctx, "/v1/controller/properties/info/all", &infos, opts...)
++	return infos, err
++}
++
++// GetErrorReports returns all error reports. The Text field is not populated,
++// use GetErrorReport to get the text of an error report.
++func (s *ControllerService) GetErrorReports(ctx context.Context, opts ...*ListOpts) ([]ErrorReport, error) {
++	var reports []ErrorReport
++	_, err := s.client.doGET(ctx, "/v1/error-reports", &reports, opts...)
++	return reports, err
++}
++
++// DeleteErrorReports deletes error reports as specified by the ErrorReportDelete struct.
++func (s *ControllerService) DeleteErrorReports(ctx context.Context, del ErrorReportDelete) error {
++	// Yes, this is using PATCH. don't ask me why, its just implemented that way...
++	_, err := s.client.doPATCH(ctx, "/v1/error-reports", del)
++	return err
++}
++
++// unixMilli returns t formatted as milliseconds since Unix epoch
++func unixMilli(t time.Time) int64 {
++	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
++}
++
++// GetErrorReportsSince returns all error reports created after a certain point in time.
++func (s *ControllerService) GetErrorReportsSince(ctx context.Context, since time.Time, opts ...*ListOpts) ([]ErrorReport, error) {
++	var reports []ErrorReport
++	v := url.Values{}
++	v.Set("since", strconv.FormatInt(unixMilli(since), 10))
++	_, err := s.client.doGET(ctx, "/v1/error-reports/?"+v.Encode(), &reports, opts...)
++	return reports, err
++}
++
++// GetErrorReport returns a specific error report, including its text.
++func (s *ControllerService) GetErrorReport(ctx context.Context, id string, opts ...*ListOpts) (ErrorReport, error) {
++	var report []ErrorReport
++	_, err := s.client.doGET(ctx, "/v1/error-reports/"+id, &report, opts...)
++	return report[0], err
++}
++
++// CreateSOSReport creates an SOS report in the log directory of the controller
++func (s *ControllerService) CreateSOSReport(ctx context.Context, opts ...*ListOpts) error {
++	_, err := s.client.doGET(ctx, "/v1/sos-report", nil, opts...)
++	return err
++}
++
++// DownloadSOSReport request sos report to download
++func (s *ControllerService) DownloadSOSReport(ctx context.Context, opts ...*ListOpts) error {
++	_, err := s.client.doGET(ctx, "/v1/sos-report/download", nil, opts...)
++	return err
++}
++
++func (s *ControllerService) GetSatelliteConfig(ctx context.Context, node string) (SatelliteConfig, error) {
++	var cfg SatelliteConfig
++	_, err := s.client.doGET(ctx, "/v1/nodes/"+node+"/config", &cfg)
++	return cfg, err
++}
++
++func (s *ControllerService) ModifySatelliteConfig(ctx context.Context, node string, cfg SatelliteConfig) error {
++	_, err := s.client.doPUT(ctx, "/v1/nodes/"+node+"/config", &cfg)
++	return err
++}
++
++// GetExternalFiles get a list of previously registered external files.
++// File contents are not included, unless ListOpts.Content is true.
++func (s *ControllerService) GetExternalFiles(ctx context.Context, opts ...*ListOpts) ([]ExternalFile, error) {
++	var files []ExternalFile
++	_, err := s.client.doGET(ctx, "/v1/files", &files, opts...)
++	return files, err
++}
++
++// GetExternalFile gets the requested external file including its content
++func (s *ControllerService) GetExternalFile(ctx context.Context, name string) (ExternalFile, error) {
++	file := ExternalFile{}
++	_, err := s.client.doGET(ctx, "/v1/files/"+url.QueryEscape(name), &file)
++	if err != nil {
++		return ExternalFile{}, fmt.Errorf("request failed: %w", err)
++	}
++	return file, nil
++}
++
++// ModifyExternalFile registers or modifies a previously registered external
++// file
++func (s *ControllerService) ModifyExternalFile(ctx context.Context, name string, file ExternalFile) error {
++	b64file := externalFileBase64{
++		Path:          file.Path,
++		ContentBase64: base64.StdEncoding.EncodeToString(file.Content),
++	}
++	_, err := s.client.doPUT(ctx, "/v1/files/"+url.QueryEscape(name), b64file)
++	return err
++}
++
++// DeleteExternalFile deletes the given external file. This effectively also
++// deletes the file on all satellites
++func (s *ControllerService) DeleteExternalFile(ctx context.Context, name string) error {
++	_, err := s.client.doDELETE(ctx, "/v1/files/"+url.QueryEscape(name), nil)
++	return err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/controllerconfig.go b/vendor/github.com/LINBIT/golinstor/client/controllerconfig.go
+index f6570e98f7..eefda5e95d 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/controllerconfig.go
++++ b/vendor/github.com/LINBIT/golinstor/client/controllerconfig.go
+@@ -17,65 +17,100 @@
+ package client
+ 
+ type ControllerConfig struct {
+-	Config ControllerConfigConfig `json:"config,omitempty" toml:"config,omitempty,omitzero"`
+-	Debug  ControllerConfigDebug  `json:"debug,omitempty" toml:"debug,omitempty,omitzero"`
+-	Log    ControllerConfigLog    `json:"log,omitempty" toml:"log,omitempty,omitzero"`
+-	Db     ControllerConfigDb     `json:"db,omitempty" toml:"db,omitempty,omitzero"`
+-	Http   ControllerConfigHttp   `json:"http,omitempty" toml:"http,omitempty,omitzero"`
+-	Https  ControllerConfigHttps  `json:"https,omitempty" toml:"https,omitempty,omitzero"`
+-	Ldap   ControllerConfigLdap   `json:"ldap,omitempty" toml:"ldap,omitempty,omitzero"`
++	Config ControllerConfigConfig `json:"config,omitempty"`
++	Debug  ControllerConfigDebug  `json:"debug,omitempty"`
++	Log    ControllerConfigLog    `json:"log,omitempty"`
++	Db     ControllerConfigDb     `json:"db,omitempty"`
++	Http   ControllerConfigHttp   `json:"http,omitempty"`
++	Https  ControllerConfigHttps  `json:"https,omitempty"`
++	Ldap   ControllerConfigLdap   `json:"ldap,omitempty"`
+ }
+ 
+ type ControllerConfigConfig struct {
+-	Dir string `json:"dir,omitempty" toml:"dir,omitempty,omitzero"`
++	Dir string `json:"dir,omitempty"`
+ }
+ 
+ type ControllerConfigDbEtcd struct {
+-	OperationsPerTransaction int32 `json:"operations_per_transaction,omitempty" toml:"operations_per_transaction,omitempty,omitzero"`
++	OperationsPerTransaction int32  `json:"operations_per_transaction,omitempty"`
++	Prefix                   string `json:"prefix,omitempty"`
+ }
+ 
+ type ControllerConfigDb struct {
+-	ConnectionUrl        string                 `json:"connection_url,omitempty" toml:"connection_url,omitempty,omitzero"`
+-	CaCertificate        string                 `json:"ca_certificate,omitempty" toml:"ca_certificate,omitempty,omitzero"`
+-	ClientCertificate    string                 `json:"client_certificate,omitempty" toml:"client_certificate,omitempty,omitzero"`
+-	ClientKeyPkcs8Pem    string                 `json:"client_key_pkcs8_pem,omitempty" toml:"client_key_pkcs8_pem,omitempty,omitzero"`
+-	InMemory             string                 `json:"in_memory,omitempty" toml:"in_memory,omitempty,omitzero"`
+-	VersionCheckDisabled bool                   `json:"version_check_disabled,omitempty" toml:"version_check_disabled,omitempty,omitzero"`
+-	Etcd                 ControllerConfigDbEtcd `json:"etcd,omitempty" toml:"etcd,omitempty,omitzero"`
++	ConnectionUrl        string                 `json:"connection_url,omitempty"`
++	CaCertificate        string                 `json:"ca_certificate,omitempty"`
++	ClientCertificate    string                 `json:"client_certificate,omitempty"`
++	ClientKeyPkcs8Pem    string                 `json:"client_key_pkcs8_pem,omitempty"`
++	InMemory             string                 `json:"in_memory,omitempty"`
++	VersionCheckDisabled bool                   `json:"version_check_disabled,omitempty"`
++	Etcd                 ControllerConfigDbEtcd `json:"etcd,omitempty"`
+ }
+ 
+ type ControllerConfigDebug struct {
+-	ConsoleEnabled bool `json:"console_enabled,omitempty" toml:"console_enabled,omitempty,omitzero"`
++	ConsoleEnabled bool `json:"console_enabled,omitempty"`
+ }
+ 
+ type ControllerConfigHttp struct {
+-	Enabled       bool   `json:"enabled,omitempty" toml:"enabled,omitempty,omitzero"`
+-	ListenAddress string `json:"listen_address,omitempty" toml:"listen_address,omitempty,omitzero"`
+-	Port          int32  `json:"port,omitempty" toml:"port,omitempty,omitzero"`
++	Enabled       bool   `json:"enabled,omitempty"`
++	ListenAddress string `json:"listen_address,omitempty"`
++	Port          int32  `json:"port,omitempty"`
+ }
+ 
+ type ControllerConfigHttps struct {
+-	Enabled       bool   `json:"enabled,omitempty" toml:"enabled,omitempty,omitzero"`
+-	ListenAddress string `json:"listen_address,omitempty" toml:"listen_address,omitempty,omitzero"`
+-	Port          int32  `json:"port,omitempty" toml:"port,omitempty,omitzero"`
++	Enabled            bool   `json:"enabled,omitempty"`
++	ListenAddress      string `json:"listen_address,omitempty"`
++	Port               int32  `json:"port,omitempty"`
++	Keystore           string `json:"keystore,omitempty"`
++	KeystorePassword   string `json:"keystore_password,omitempty"`
++	Truststore         string `json:"truststore,omitempty"`
++	TruststorePassword string `json:"truststore_password,omitempty"`
+ }
+ 
+ type ControllerConfigLdap struct {
+-	Enabled             bool   `json:"enabled,omitempty" toml:"enabled,omitempty,omitzero"`
+-	PublicAccessAllowed bool   `json:"public_access_allowed,omitempty" toml:"public_access_allowed,omitempty,omitzero"`
+-	Uri                 string `json:"uri,omitempty" toml:"uri,omitempty,omitzero"`
+-	Dn                  string `json:"dn,omitempty" toml:"dn,omitempty,omitzero"`
+-	SearchBase          string `json:"search_base,omitempty" toml:"search_base,omitempty,omitzero"`
+-	SearchFilter        string `json:"search_filter,omitempty" toml:"search_filter,omitempty,omitzero"`
++	Enabled             bool   `json:"enabled,omitempty"`
++	PublicAccessAllowed bool   `json:"public_access_allowed,omitempty"`
++	Uri                 string `json:"uri,omitempty"`
++	Dn                  string `json:"dn,omitempty"`
++	SearchBase          string `json:"search_base,omitempty"`
++	SearchFilter        string `json:"search_filter,omitempty"`
+ }
+ 
+ type ControllerConfigLog struct {
+-	PrintStackTrace   bool     `json:"print_stack_trace,omitempty" toml:"print_stack_trace,omitempty,omitzero"`
+-	Directory         string   `json:"directory,omitempty" toml:"directory,omitempty,omitzero"`
+-	Level             LogLevel `json:"level,omitempty" toml:"level,omitempty,omitzero"`
+-	LevelLinstor      LogLevel `json:"level_linstor,omitempty" toml:"level_linstor,omitempty,omitzero"`
+-	RestAccessLogPath string   `json:"rest_access_log_path,omitempty" toml:"rest_access_log_path,omitempty,omitzero"`
+-	RestAccessMode    string   `json:"rest_access_mode,omitempty" toml:"rest_access_mode,omitempty,omitzero"`
++	PrintStackTrace    bool     `json:"print_stack_trace,omitempty"`
++	Directory          string   `json:"directory,omitempty"`
++	Level              LogLevel `json:"level,omitempty"`
++	LevelGlobal        LogLevel `json:"level_global,omitempty"`
++	LevelLinstor       LogLevel `json:"level_linstor,omitempty"`
++	LevelLinstorGlobal LogLevel `json:"level_linstor_global,omitempty"`
++	RestAccessLogPath  string   `json:"rest_access_log_path,omitempty"`
++	RestAccessMode     string   `json:"rest_access_mode,omitempty"`
++}
++
++// SatelliteConfig struct for SatelliteConfig
++type SatelliteConfig struct {
++	Config               ControllerConfigConfig `json:"config,omitempty"`
++	Debug                ControllerConfigDebug  `json:"debug,omitempty"`
++	Log                  SatelliteConfigLog     `json:"log,omitempty"`
++	StltOverrideNodeName string                 `json:"stlt_override_node_name,omitempty"`
++	Openflex             bool                   `json:"openflex,omitempty"`
++	RemoteSpdk           bool                   `json:"remote_spdk,omitempty"`
++	SpecialSatellite     bool                   `json:"special_satellite,omitempty"`
++	DrbdKeepResPattern   string                 `json:"drbd_keep_res_pattern,omitempty"`
++	Net                  SatelliteConfigNet     `json:"net,omitempty"`
++}
++
++// SatelliteConfigLog struct for SatelliteConfigLog
++type SatelliteConfigLog struct {
++	PrintStackTrace bool     `json:"print_stack_trace,omitempty"`
++	Directory       string   `json:"directory,omitempty"`
++	Level           LogLevel `json:"level,omitempty"`
++	LevelLinstor    LogLevel `json:"level_linstor,omitempty"`
++}
++
++// SatelliteConfigNet struct for SatelliteConfigNet
++type SatelliteConfigNet struct {
++	BindAddress string `json:"bind_address,omitempty"`
++	Port        int32  `json:"port,omitempty"`
++	ComType     string `json:"com_type,omitempty"`
+ }
+ 
+ type LogLevel string
+diff --git a/vendor/github.com/LINBIT/golinstor/client/encryption.go b/vendor/github.com/LINBIT/golinstor/client/encryption.go
+index 78191d066a..8306122859 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/encryption.go
++++ b/vendor/github.com/LINBIT/golinstor/client/encryption.go
+@@ -21,6 +21,18 @@ import "context"
+ 
+ // custom code
+ 
++// EncryptionProvider acts as an abstraction for an EncryptionService. It can be
++// swapped out for another EncryptionService implementation, for example for
++// testing.
++type EncryptionProvider interface {
++	// Create creates an encryption with the given passphrase
++	Create(ctx context.Context, passphrase Passphrase) error
++	// Modify modifies an existing passphrase
++	Modify(ctx context.Context, passphrase Passphrase) error
++	// Enter is used to enter a password so that content can be decrypted
++	Enter(ctx context.Context, password string) error
++}
++
+ // EncryptionService is the service that deals with encyrption related tasks.
+ type EncryptionService struct {
+ 	client *Client
+diff --git a/vendor/github.com/LINBIT/golinstor/client/node.go b/vendor/github.com/LINBIT/golinstor/client/node.go
+index c1226c78a9..5c296749b9 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/node.go
++++ b/vendor/github.com/LINBIT/golinstor/client/node.go
+@@ -16,7 +16,11 @@
+ 
+ package client
+ 
+-import "context"
++import (
++	"context"
++
++	"github.com/LINBIT/golinstor/devicelayerkind"
++)
+ 
+ // copy & paste from generated code
+ 
+@@ -31,11 +35,13 @@ type Node struct {
+ 	// Enum describing the current connection status.
+ 	ConnectionStatus string `json:"connection_status,omitempty"`
+ 	// unique object id
+-	Uuid                 string                    `json:"uuid,omitempty"`
+-	StorageProviders     []ProviderKind            `json:"storage_providers,omitempty"`
+-	ResourceLayers       []LayerType               `json:"resource_layers,omitempty"`
+-	UnsupportedProviders map[ProviderKind][]string `json:"unsupported_providers,omitempty"`
+-	UnsupportedLayers    map[LayerType][]string    `json:"unsupported_layers,omitempty"`
++	Uuid                 string                                       `json:"uuid,omitempty"`
++	StorageProviders     []ProviderKind                               `json:"storage_providers,omitempty"`
++	ResourceLayers       []devicelayerkind.DeviceLayerKind            `json:"resource_layers,omitempty"`
++	UnsupportedProviders map[ProviderKind][]string                    `json:"unsupported_providers,omitempty"`
++	UnsupportedLayers    map[devicelayerkind.DeviceLayerKind][]string `json:"unsupported_layers,omitempty"`
++	// milliseconds since unix epoch in UTC
++	EvictionTimestamp *TimeStampMs `json:"eviction_timestamp,omitempty"`
+ }
+ 
+ type NodeModify struct {
+@@ -44,6 +50,11 @@ type NodeModify struct {
+ 	GenericPropsModify
+ }
+ 
++type NodeRestore struct {
++	DeleteResources *bool `json:"delete_resources,omitempty"`
++	DeleteSnapshots *bool `json:"delete_snapshots,omitempty"`
++}
++
+ // NetInterface represents a node's network interface.
+ type NetInterface struct {
+ 	Name                    string `json:"name"`
+@@ -77,6 +88,10 @@ type StoragePool struct {
+ 	Reports []ApiCallRc `json:"reports,omitempty"`
+ 	// true if the storage pool supports snapshots. false otherwise
+ 	SupportsSnapshots bool `json:"supports_snapshots,omitempty"`
++	// name of the shared space or null if none given
++	SharedSpace string `json:"shared_space,omitempty"`
++	// true if a shared storage pool uses linstor-external locking, like cLVM
++	ExternalLocking bool `json:"external_locking,omitempty"`
+ }
+ 
+ // ProviderKind is a type that represents various types of storage.
+@@ -95,21 +110,70 @@ const (
+ 	SPDK            ProviderKind = "SPDK"
+ )
+ 
+-// ControllerVersion represents version information of the LINSTOR controller
+-type ControllerVersion struct {
+-	Version        string `json:"version,omitempty"`
+-	GitHash        string `json:"git_hash,omitempty"`
+-	BuildTime      string `json:"build_time,omitempty"`
+-	RestApiVersion string `json:"rest_api_version,omitempty"`
+-}
+-
+ // custom code
+ 
++// NodeProvider acts as an abstraction for a NodeService. It can be swapped out
++// for another NodeService implementation, for example for testing.
++type NodeProvider interface {
++	// GetAll gets information for all registered nodes.
++	GetAll(ctx context.Context, opts ...*ListOpts) ([]Node, error)
++	// Get gets information for a particular node.
++	Get(ctx context.Context, nodeName string, opts ...*ListOpts) (Node, error)
++	// Create creates a new node object.
++	Create(ctx context.Context, node Node) error
++	// Modify modifies the given node and sets/deletes the given properties.
++	Modify(ctx context.Context, nodeName string, props NodeModify) error
++	// Delete deletes the given node.
++	Delete(ctx context.Context, nodeName string) error
++	// Lost marks the given node as lost to delete an unrecoverable node.
++	Lost(ctx context.Context, nodeName string) error
++	// Reconnect reconnects a node to the controller.
++	Reconnect(ctx context.Context, nodeName string) error
++	// GetNetInterfaces gets information about all network interfaces of a given node.
++	GetNetInterfaces(ctx context.Context, nodeName string, opts ...*ListOpts) ([]NetInterface, error)
++	// GetNetInterface gets information about a particular network interface on a given node.
++	GetNetInterface(ctx context.Context, nodeName, nifName string, opts ...*ListOpts) (NetInterface, error)
++	// CreateNetInterface creates the given network interface on a given node.
++	CreateNetInterface(ctx context.Context, nodeName string, nif NetInterface) error
++	// ModifyNetInterface modifies the given network interface on a given node.
++	ModifyNetInterface(ctx context.Context, nodeName, nifName string, nif NetInterface) error
++	// DeleteNetinterface deletes the given network interface on a given node.
++	DeleteNetinterface(ctx context.Context, nodeName, nifName string) error
++	// GetStoragePoolView gets information about all storage pools in the cluster.
++	GetStoragePoolView(ctx context.Context, opts ...*ListOpts) ([]StoragePool, error)
++	// GetStoragePools gets information about all storage pools on a given node.
++	GetStoragePools(ctx context.Context, nodeName string, opts ...*ListOpts) ([]StoragePool, error)
++	// GetStoragePool gets information about a specific storage pool on a given node.
++	GetStoragePool(ctx context.Context, nodeName, spName string, opts ...*ListOpts) (StoragePool, error)
++	// CreateStoragePool creates a storage pool on a given node.
++	CreateStoragePool(ctx context.Context, nodeName string, sp StoragePool) error
++	// ModifyStoragePool modifies a storage pool on a given node.
++	ModifyStoragePool(ctx context.Context, nodeName, spName string, sp StoragePool) error
++	// DeleteStoragePool deletes a storage pool on a given node.
++	DeleteStoragePool(ctx context.Context, nodeName, spName string) error
++	// CreateDevicePool creates an LVM, LVM-thin or ZFS pool, optional VDO under it on a given node.
++	CreateDevicePool(ctx context.Context, nodeName string, psc PhysicalStorageCreate) error
++	// GetPhysicalStorage gets a grouped list of physical storage that can be turned into a LINSTOR storage-pool
++	GetPhysicalStorage(ctx context.Context, opts ...*ListOpts) ([]PhysicalStorage, error)
++	// GetStoragePoolPropsInfos gets meta information about the properties
++	// that can be set on a storage pool on a particular node.
++	GetStoragePoolPropsInfos(ctx context.Context, nodeName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetPropsInfos gets meta information about the properties that can be
++	// set on a node.
++	GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error)
++	// Evict the given node, migrating resources to the remaining nodes, if possible.
++	Evict(ctx context.Context, nodeName string) error
++	// Restore an evicted node, optionally keeping existing resources.
++	Restore(ctx context.Context, nodeName string, restore NodeRestore) error
++}
++
+ // NodeService is the service that deals with node related tasks.
+ type NodeService struct {
+ 	client *Client
+ }
+ 
++var _ NodeProvider = &NodeService{}
++
+ // GetAll gets information for all registered nodes.
+ func (n *NodeService) GetAll(ctx context.Context, opts ...*ListOpts) ([]Node, error) {
+ 	var nodes []Node
+@@ -164,7 +228,7 @@ func (n *NodeService) GetNetInterfaces(ctx context.Context, nodeName string, opt
+ // GetNetInterface gets information about a particular network interface on a given node.
+ func (n *NodeService) GetNetInterface(ctx context.Context, nodeName, nifName string, opts ...*ListOpts) (NetInterface, error) {
+ 	var nif NetInterface
+-	_, err := n.client.doGET(ctx, "/v1/nodes/"+nodeName+"/net-interfaces/"+nifName, nif, opts...)
++	_, err := n.client.doGET(ctx, "/v1/nodes/"+nodeName+"/net-interfaces/"+nifName, &nif, opts...)
+ 	return nif, err
+ }
+ 
+@@ -225,37 +289,30 @@ func (n *NodeService) DeleteStoragePool(ctx context.Context, nodeName, spName st
+ 	return err
+ }
+ 
+-// GetControllerVersion queries version information for the controller.
+-func (n *NodeService) GetControllerVersion(ctx context.Context, opts ...*ListOpts) (ControllerVersion, error) {
+-	var vers ControllerVersion
+-	_, err := n.client.doGET(ctx, "/v1/controller/version", &vers, opts...)
+-	return vers, err
++// GetStoragePoolPropsInfos gets meta information about the properties that can
++// be set on a storage pool on a particular node.
++func (n *NodeService) GetStoragePoolPropsInfos(ctx context.Context, nodeName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/nodes/"+nodeName+"/storage-pools/properties/info", &infos, opts...)
++	return infos, err
+ }
+ 
+-// GetControllerConfig queries the configuration of a controller
+-func (n *NodeService) GetControllerConfig(ctx context.Context, opts ...*ListOpts) (ControllerConfig, error) {
+-	var cfg ControllerConfig
+-	_, err := n.client.doGET(ctx, "/v1/controller/config", &cfg, opts...)
+-	return cfg, err
++// GetPropsInfos gets meta information about the properties that can be set on
++// a node.
++func (n *NodeService) GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/nodes/properties/info", &infos, opts...)
++	return infos, err
+ }
+ 
+-// ModifyController modifies the controller node and sets/deletes the given properties.
+-func (n *NodeService) ModifyController(ctx context.Context, props GenericPropsModify) error {
+-	_, err := n.client.doPOST(ctx, "/v1/controller/properties", props)
++// Evict the given node, migrating resources to the remaining nodes, if possible.
++func (n NodeService) Evict(ctx context.Context, nodeName string) error {
++	_, err := n.client.doPUT(ctx, "/v1/nodes/"+nodeName+"/evict", nil)
+ 	return err
+ }
+ 
+-type ControllerProps map[string]string
+-
+-// GetControllerProps gets all properties of a controller
+-func (n *NodeService) GetControllerProps(ctx context.Context, opts ...*ListOpts) (ControllerProps, error) {
+-	var props ControllerProps
+-	_, err := n.client.doGET(ctx, "/v1/controller/properties", &props, opts...)
+-	return props, err
+-}
+-
+-// DeleteControllerProp deletes the given property/key from the controller object.
+-func (n *NodeService) DeleteControllerProp(ctx context.Context, prop string) error {
+-	_, err := n.client.doDELETE(ctx, "/v1/controller/properties/"+prop, nil)
++// Restore an evicted node, optionally keeping existing resources.
++func (n *NodeService) Restore(ctx context.Context, nodeName string, restore NodeRestore) error {
++	_, err := n.client.doPUT(ctx, "/v1/nodes/"+nodeName+"/restore", restore)
+ 	return err
+ }
+diff --git a/vendor/github.com/LINBIT/golinstor/client/option.go b/vendor/github.com/LINBIT/golinstor/client/option.go
+index 5c7deae043..7622e14649 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/option.go
++++ b/vendor/github.com/LINBIT/golinstor/client/option.go
+@@ -26,12 +26,20 @@ import (
+ 
+ // ListOpts is a struct primarily used to define parameters used for pagination. It is also used for filtering (e.g., the /view/ calls)
+ type ListOpts struct {
+-	Page    int `url:"offset"`
+-	PerPage int `url:"limit"`
++	// Number of items to skip. Only used if Limit is a positive value
++	Offset int `url:"offset"`
++	// Maximum number of items to retrieve
++	Limit int `url:"limit"`
+ 
+ 	StoragePool []string `url:"storage_pools"`
+ 	Resource    []string `url:"resources"`
+ 	Node        []string `url:"nodes"`
++	Prop        []string `url:"props"`
++	Snapshots   []string `url:"snapshots"`
++	Status      string   `url:"status,omitempty"`
++
++	// Content is used in the files API. If true, fetching files will include the content.
++	Content bool `url:"content,omitempty"`
+ }
+ 
+ func genOptions(opts ...*ListOpts) *ListOpts {
+diff --git a/vendor/github.com/LINBIT/golinstor/client/physicalstorage.go b/vendor/github.com/LINBIT/golinstor/client/physicalstorage.go
+index 421dcc7878..4a86c3b20e 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/physicalstorage.go
++++ b/vendor/github.com/LINBIT/golinstor/client/physicalstorage.go
+@@ -26,6 +26,10 @@ type PhysicalStorageStoragePoolCreate struct {
+ 	Name string `json:"name,omitempty"`
+ 	// A string to string property map.
+ 	Props map[string]string `json:"props,omitempty"`
++	// Name of the shared space
++	SharedSpace string `json:"shared_space,omitempty"`
++	// true if a shared storage pool uses linstor-external locking, like cLVM
++	ExternalLocking bool `json:"external_locking,omitempty"`
+ }
+ 
+ // PhysicalStorageCreate is a configuration struct used to represent pysical storage on a given node.
+@@ -37,8 +41,8 @@ type PhysicalStorageCreate struct {
+ 	RaidLevel         string                           `json:"raid_level,omitempty"`
+ 	PoolName          string                           `json:"pool_name,omitempty"`
+ 	VdoEnable         bool                             `json:"vdo_enable,omitempty"`
+-	VdoSlabSizeKib    int32                            `json:"vdo_slab_size_kib,omitempty"`
+-	VdoLogicalSizeKib int32                            `json:"vdo_logical_size_kib,omitempty"`
++	VdoSlabSizeKib    int64                            `json:"vdo_slab_size_kib,omitempty"`
++	VdoLogicalSizeKib int64                            `json:"vdo_logical_size_kib,omitempty"`
+ 	WithStoragePool   PhysicalStorageStoragePoolCreate `json:"with_storage_pool,omitempty"`
+ }
+ 
+diff --git a/vendor/github.com/LINBIT/golinstor/client/remote.go b/vendor/github.com/LINBIT/golinstor/client/remote.go
+new file mode 100644
+index 0000000000..5b0a205fd8
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/client/remote.go
+@@ -0,0 +1,105 @@
++package client
++
++import (
++	"context"
++	"fmt"
++
++	"github.com/google/go-querystring/query"
++)
++
++type LinstorRemote struct {
++	RemoteName string `json:"remote_name,omitempty"`
++	Url        string `json:"url,omitempty"`
++	Passphrase string `json:"passphrase,omitempty"`
++	ClusterId  string `json:"cluster_id,omitempty"`
++}
++
++type RemoteList struct {
++	S3Remotes      []S3Remote      `json:"s3_remotes,omitempty"`
++	LinstorRemotes []LinstorRemote `json:"linstor_remotes,omitempty"`
++}
++
++type S3Remote struct {
++	RemoteName   string `json:"remote_name,omitempty"`
++	Endpoint     string `json:"endpoint,omitempty"`
++	Bucket       string `json:"bucket,omitempty"`
++	Region       string `json:"region,omitempty"`
++	AccessKey    string `json:"access_key,omitempty"`
++	SecretKey    string `json:"secret_key,omitempty"`
++	UsePathStyle bool   `json:"use_path_style,omitempty"`
++}
++
++type RemoteProvider interface {
++	// GetAll returns the list of all registered remotes.
++	GetAll(ctx context.Context, opts ...*ListOpts) (RemoteList, error)
++	// GetAllLinstor returns the list of LINSTOR remotes.
++	GetAllLinstor(ctx context.Context, opts ...*ListOpts) ([]LinstorRemote, error)
++	// GetAllS3 returns the list of S3 remotes.
++	GetAllS3(ctx context.Context, opts ...*ListOpts) ([]S3Remote, error)
++	// CreateLinstor creates a new LINSTOR remote.
++	CreateLinstor(ctx context.Context, create LinstorRemote) error
++	// CreateS3 creates a new S3 remote.
++	CreateS3(ctx context.Context, create S3Remote) error
++	// Delete a named remote.
++	Delete(ctx context.Context, remoteName string) error
++	// ModifyLinstor modifies the given LINSTOR remote.
++	ModifyLinstor(ctx context.Context, remoteName string, modify LinstorRemote) error
++	// ModifyS3 modifies the given S3 remote.
++	ModifyS3(ctx context.Context, remoteName string, modify S3Remote) error
++}
++
++var _ RemoteProvider = &RemoteService{}
++
++type RemoteService struct {
++	client *Client
++}
++
++func (r *RemoteService) GetAll(ctx context.Context, opts ...*ListOpts) (RemoteList, error) {
++	var list RemoteList
++	_, err := r.client.doGET(ctx, "/v1/remotes", &list, opts...)
++	return list, err
++}
++
++func (r *RemoteService) GetAllLinstor(ctx context.Context, opts ...*ListOpts) ([]LinstorRemote, error) {
++	var list []LinstorRemote
++	_, err := r.client.doGET(ctx, "/v1/remotes/linstor", &list, opts...)
++	return list, err
++}
++
++func (r *RemoteService) GetAllS3(ctx context.Context, opts ...*ListOpts) ([]S3Remote, error) {
++	var list []S3Remote
++	_, err := r.client.doGET(ctx, "/v1/remotes/s3", &list, opts...)
++	return list, err
++}
++
++func (r *RemoteService) CreateLinstor(ctx context.Context, create LinstorRemote) error {
++	_, err := r.client.doPOST(ctx, "/v1/remotes/linstor", create)
++	return err
++}
++
++func (r *RemoteService) CreateS3(ctx context.Context, create S3Remote) error {
++	_, err := r.client.doPOST(ctx, "/v1/remotes/s3", create)
++	return err
++}
++
++func (r *RemoteService) Delete(ctx context.Context, remoteName string) error {
++	vals, err := query.Values(&struct {
++		RemoteName string `url:"remote_name"`
++	}{RemoteName: remoteName})
++	if err != nil {
++		return fmt.Errorf("failed to encode remote name: %w", err)
++	}
++
++	_, err = r.client.doDELETE(ctx, "/v1/remotes?"+vals.Encode(), nil)
++	return err
++}
++
++func (r *RemoteService) ModifyLinstor(ctx context.Context, remoteName string, modify LinstorRemote) error {
++	_, err := r.client.doPUT(ctx, "/v1/remotes/linstor/"+ remoteName, modify)
++	return err
++}
++
++func (r *RemoteService) ModifyS3(ctx context.Context, remoteName string, modify S3Remote) error {
++	_, err := r.client.doPUT(ctx, "/v1/remotes/s3/"+ remoteName, modify)
++	return err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/resource.go b/vendor/github.com/LINBIT/golinstor/client/resource.go
+index d49423fac7..18ebe561b9 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/resource.go
++++ b/vendor/github.com/LINBIT/golinstor/client/resource.go
+@@ -22,6 +22,11 @@ import (
+ 	"encoding/json"
+ 	"fmt"
+ 	"strconv"
++
++	"github.com/google/go-querystring/query"
++
++	"github.com/LINBIT/golinstor/devicelayerkind"
++	"github.com/LINBIT/golinstor/snapshotshipstatus"
+ )
+ 
+ // ResourceService is a struct which contains the pointer of the client
+@@ -42,41 +47,51 @@ type Resource struct {
+ 	State       ResourceState     `json:"state,omitempty"`
+ 	// unique object id
+ 	Uuid string `json:"uuid,omitempty"`
++	// milliseconds since unix epoch in UTC
++	CreateTimestamp *TimeStampMs `json:"create_timestamp,omitempty"`
+ }
+ 
+ type ResourceWithVolumes struct {
+ 	Resource
+-	Volumes []Volume `json:"volumes,omitempty"`
++	// milliseconds since unix epoch in UTC
++	CreateTimestamp *TimeStampMs `json:"create_timestamp,omitempty"`
++	Volumes         []Volume     `json:"volumes,omitempty"`
++	// shared space name of the data storage pool of the first volume of
++	// the resource or empty if data storage pool is not shared
++	SharedName string `json:"shared_name,omitempty"`
+ }
+ 
+ type ResourceDefinitionModify struct {
+ 	// drbd port for resources
+ 	DrbdPort int32 `json:"drbd_port,omitempty"`
+ 	// drbd peer slot number
+-	DrbdPeerSlots int32       `json:"drbd_peer_slots,omitempty"`
+-	LayerStack    []LayerType `json:"layer_stack,omitempty"`
++	DrbdPeerSlots int32                             `json:"drbd_peer_slots,omitempty"`
++	LayerStack    []devicelayerkind.DeviceLayerKind `json:"layer_stack,omitempty"`
++	// change resource group to the given group name
++	ResourceGroup string `json:"resource_group,omitempty"`
+ 	GenericPropsModify
+ }
+ 
+ // ResourceCreate is a struct where the properties of a resource are stored to create it
+ type ResourceCreate struct {
+-	Resource   Resource    `json:"resource,omitempty"`
+-	LayerList  []LayerType `json:"layer_list,omitempty"`
+-	DrbdNodeId int32       `json:"drbd_node_id,omitempty"`
++	Resource   Resource                          `json:"resource,omitempty"`
++	LayerList  []devicelayerkind.DeviceLayerKind `json:"layer_list,omitempty"`
++	DrbdNodeId int32                             `json:"drbd_node_id,omitempty"`
+ }
+ 
+ // ResourceLayer is a struct to store layer-information abour a resource
+ type ResourceLayer struct {
+-	Children           []ResourceLayer    `json:"children,omitempty"`
+-	ResourceNameSuffix string             `json:"resource_name_suffix,omitempty"`
+-	Type               LayerType          `json:"type,omitempty"`
+-	Drbd               DrbdResource       `json:"drbd,omitempty"`
+-	Luks               LuksResource       `json:"luks,omitempty"`
+-	Storage            StorageResource    `json:"storage,omitempty"`
+-	Nvme               NvmeResource       `json:"nvme,omitempty"`
+-	Openflex           OpenflexResource   `json:"openflex,omitempty"`
+-	Writecache         WritecacheResource `json:"writecache,omitempty"`
+-	Cache              CacheResource      `json:"cache,omitempty"`
++	Children           []ResourceLayer                 `json:"children,omitempty"`
++	ResourceNameSuffix string                          `json:"resource_name_suffix,omitempty"`
++	Type               devicelayerkind.DeviceLayerKind `json:"type,omitempty"`
++	Drbd               DrbdResource                    `json:"drbd,omitempty"`
++	Luks               LuksResource                    `json:"luks,omitempty"`
++	Storage            StorageResource                 `json:"storage,omitempty"`
++	Nvme               NvmeResource                    `json:"nvme,omitempty"`
++	Openflex           OpenflexResource                `json:"openflex,omitempty"`
++	Writecache         WritecacheResource              `json:"writecache,omitempty"`
++	Cache              CacheResource                   `json:"cache,omitempty"`
++	BCache             BCacheResource                  `json:"bcache,omitempty"`
+ }
+ 
+ type WritecacheResource struct {
+@@ -95,6 +110,22 @@ type WritecacheVolume struct {
+ 	DiskState string `json:"disk_state,omitempty"`
+ }
+ 
++type BCacheResource struct {
++	BCacheVolumes []BCacheVolume `json:"bcache_volumes,omitempty"`
++}
++
++type BCacheVolume struct {
++	VolumeNumber int32 `json:"volume_number,omitempty"`
++	// block device path
++	DevicePath string `json:"device_path,omitempty"`
++	// block device path used as cache device
++	DevicePathCache  string `json:"device_path_cache,omitempty"`
++	AllocatedSizeKib int64  `json:"allocated_size_kib,omitempty"`
++	UsableSizeKib    int64  `json:"usable_size_kib,omitempty"`
++	// String describing current volume state
++	DiskState string `json:"disk_state,omitempty"`
++}
++
+ // DrbdResource is a struct used to give linstor drbd properties for a resource
+ type DrbdResource struct {
+ 	DrbdResourceDefinition DrbdResourceDefinitionLayer `json:"drbd_resource_definition,omitempty"`
+@@ -105,6 +136,8 @@ type DrbdResource struct {
+ 	Flags                  []string                    `json:"flags,omitempty"`
+ 	DrbdVolumes            []DrbdVolume                `json:"drbd_volumes,omitempty"`
+ 	Connections            map[string]DrbdConnection   `json:"connections,omitempty"`
++	PromotionScore         int32                       `json:"promotion_score,omitempty"`
++	MayPromote             bool                        `json:"may_promote,omitempty"`
+ }
+ 
+ // DrbdConnection is a struct representing the DRBD connection status
+@@ -189,7 +222,7 @@ type ResourceState struct {
+ // Volume is a struct which holds the information about a linstor-volume
+ type Volume struct {
+ 	VolumeNumber     int32        `json:"volume_number,omitempty"`
+-	StoragePool      string       `json:"storage_pool,omitempty"`
++	StoragePoolName  string       `json:"storage_pool_name,omitempty"`
+ 	ProviderKind     ProviderKind `json:"provider_kind,omitempty"`
+ 	DevicePath       string       `json:"device_path,omitempty"`
+ 	AllocatedSizeKib int64        `json:"allocated_size_kib,omitempty"`
+@@ -206,8 +239,8 @@ type Volume struct {
+ 
+ // VolumeLayer is a struct for storing the layer-properties of a linstor-volume
+ type VolumeLayer struct {
+-	Type LayerType                                                                   `json:"type,omitempty"`
+-	Data OneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume `json:"data,omitempty"`
++	Type devicelayerkind.DeviceLayerKind                                                         `json:"type,omitempty"`
++	Data OneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume `json:"data,omitempty"`
+ }
+ 
+ // VolumeState is a struct which contains the disk-state for volume
+@@ -217,22 +250,28 @@ type VolumeState struct {
+ 
+ // AutoPlaceRequest is a struct to store the paramters for the linstor auto-place command
+ type AutoPlaceRequest struct {
+-	DisklessOnRemaining bool             `json:"diskless_on_remaining,omitempty"`
+-	SelectFilter        AutoSelectFilter `json:"select_filter,omitempty"`
+-	LayerList           []LayerType      `json:"layer_list,omitempty"`
++	DisklessOnRemaining bool                              `json:"diskless_on_remaining,omitempty"`
++	SelectFilter        AutoSelectFilter                  `json:"select_filter,omitempty"`
++	LayerList           []devicelayerkind.DeviceLayerKind `json:"layer_list,omitempty"`
+ }
+ 
+ // AutoSelectFilter is a struct used to have information about the auto-select function
+ type AutoSelectFilter struct {
+-	PlaceCount           int32    `json:"place_count,omitempty"`
+-	StoragePool          string   `json:"storage_pool,omitempty"`
+-	NotPlaceWithRsc      []string `json:"not_place_with_rsc,omitempty"`
+-	NotPlaceWithRscRegex string   `json:"not_place_with_rsc_regex,omitempty"`
+-	ReplicasOnSame       []string `json:"replicas_on_same,omitempty"`
+-	ReplicasOnDifferent  []string `json:"replicas_on_different,omitempty"`
+-	LayerStack           []string `json:"layer_stack,omitempty"`
+-	ProviderList         []string `json:"provider_list,omitempty"`
+-	DisklessOnRemaining  bool     `json:"diskless_on_remaining,omitempty"`
++	PlaceCount              int32    `json:"place_count,omitempty"`
++	AdditionalPlaceCount    int32    `json:"additional_place_count,omitempty"`
++	NodeNameList            []string `json:"node_name_list,omitempty"`
++	StoragePool             string   `json:"storage_pool,omitempty"`
++	StoragePoolList         []string `json:"storage_pool_list,omitempty"`
++	StoragePoolDisklessList []string `json:"storage_pool_diskless_list,omitempty"`
++	NotPlaceWithRsc         []string `json:"not_place_with_rsc,omitempty"`
++	NotPlaceWithRscRegex    string   `json:"not_place_with_rsc_regex,omitempty"`
++	ReplicasOnSame          []string `json:"replicas_on_same,omitempty"`
++	ReplicasOnDifferent     []string `json:"replicas_on_different,omitempty"`
++	LayerStack              []string `json:"layer_stack,omitempty"`
++	ProviderList            []string `json:"provider_list,omitempty"`
++	DisklessOnRemaining     bool     `json:"diskless_on_remaining,omitempty"`
++	DisklessType            string   `json:"diskless_type,omitempty"`
++	Overprovision           *float64 `json:"overprovision,omitempty"`
+ }
+ 
+ // ResourceConnection is a struct which holds information about a connection between to nodes
+@@ -257,9 +296,43 @@ type Snapshot struct {
+ 	Flags             []string                   `json:"flags,omitempty"`
+ 	VolumeDefinitions []SnapshotVolumeDefinition `json:"volume_definitions,omitempty"`
+ 	// unique object id
++	Uuid      string         `json:"uuid,omitempty"`
++	Snapshots []SnapshotNode `json:"snapshots,omitempty"`
++}
++
++// SnapshotNode Actual snapshot data from a node
++type SnapshotNode struct {
++	// Snapshot name this snapshots belongs to
++	SnapshotName string `json:"snapshot_name,omitempty"`
++	// Node name where this snapshot was taken
++	NodeName string `json:"node_name,omitempty"`
++	// milliseconds since unix epoch in UTC
++	CreateTimestamp *TimeStampMs `json:"create_timestamp,omitempty"`
++	Flags           []string     `json:"flags,omitempty"`
++	// unique object id
+ 	Uuid string `json:"uuid,omitempty"`
+ }
+ 
++// SnapshotShipping struct for SnapshotShipping
++type SnapshotShipping struct {
++	// Node where to ship the snapshot from
++	FromNode string `json:"from_node"`
++	// NetInterface of the source node
++	FromNic string `json:"from_nic,omitempty"`
++	// Node where to ship the snapshot
++	ToNode string `json:"to_node"`
++	// NetInterface of the destination node
++	ToNic string `json:"to_nic,omitempty"`
++}
++
++// SnapshotShippingStatus struct for SnapshotShippingStatus
++type SnapshotShippingStatus struct {
++	Snapshot     Snapshot                              `json:"snapshot,omitempty"`
++	FromNodeName string                                `json:"from_node_name,omitempty"`
++	ToNodeName   string                                `json:"to_node_name,omitempty"`
++	Status       snapshotshipstatus.SnapshotShipStatus `json:"status,omitempty"`
++}
++
+ // SnapshotVolumeDefinition is a struct to store the properties of a volume from a snapshot
+ type SnapshotVolumeDefinition struct {
+ 	VolumeNumber int32 `json:"volume_number,omitempty"`
+@@ -298,12 +371,112 @@ type MaxVolumeSizes struct {
+ 	DefaultMaxOversubscriptionRatio float64     `json:"default_max_oversubscription_ratio,omitempty"`
+ }
+ 
++type ResourceMakeAvailable struct {
++	LayerList []devicelayerkind.DeviceLayerKind `json:"layer_list,omitempty"`
++	// if true resource will be created as diskful even if diskless would be possible
++	Diskful bool `json:"diskful,omitempty"`
++}
++
++type ToggleDiskDiskfulProps struct {
++	LayerList []devicelayerkind.DeviceLayerKind `json:"layer_list,omitempty"`
++}
++
+ // custom code
+ 
++// ResourceProvider acts as an abstraction for an ResourceService. It can be
++// swapped out for another ResourceService implementation, for example for
++// testing.
++type ResourceProvider interface {
++	// GetResourceView returns all resources in the cluster. Filters can be set via ListOpts.
++	GetResourceView(ctx context.Context, opts ...*ListOpts) ([]ResourceWithVolumes, error)
++	// GetAll returns all resources for a resource-definition
++	GetAll(ctx context.Context, resName string, opts ...*ListOpts) ([]Resource, error)
++	// Get returns information about a resource on a specific node
++	Get(ctx context.Context, resName, nodeName string, opts ...*ListOpts) (Resource, error)
++	// Create is used to create a resource on a node
++	Create(ctx context.Context, res ResourceCreate) error
++	// Modify gives the ability to modify a resource on a node
++	Modify(ctx context.Context, resName, nodeName string, props GenericPropsModify) error
++	// Delete deletes a resource on a specific node
++	Delete(ctx context.Context, resName, nodeName string) error
++	// GetVolumes lists als volumes of a resource
++	GetVolumes(ctx context.Context, resName, nodeName string, opts ...*ListOpts) ([]Volume, error)
++	// GetVolume returns information about a specific volume defined by it resource,node and volume-number
++	GetVolume(ctx context.Context, resName, nodeName string, volNr int, opts ...*ListOpts) (Volume, error)
++	// ModifyVolume modifies an existing volume with the given props
++	ModifyVolume(ctx context.Context, resName, nodeName string, volNr int, props GenericPropsModify) error
++	// Diskless toggles a resource on a node to diskless - the parameter disklesspool can be set if its needed
++	Diskless(ctx context.Context, resName, nodeName, disklessPoolName string) error
++	// Diskful toggles a resource to diskful - the parameter storagepool can be set if its needed
++	Diskful(ctx context.Context, resName, nodeName, storagePoolName string, props *ToggleDiskDiskfulProps) error
++	// Migrate mirgates a resource from one node to another node
++	Migrate(ctx context.Context, resName, fromNodeName, toNodeName, storagePoolName string) error
++	// Autoplace places a resource on your nodes autmatically
++	Autoplace(ctx context.Context, resName string, apr AutoPlaceRequest) error
++	// GetConnections lists all resource connections if no node-names are given- if two node-names are given it shows the connection between them
++	GetConnections(ctx context.Context, resName, nodeAName, nodeBName string, opts ...*ListOpts) ([]ResourceConnection, error)
++	// ModifyConnection allows to modify the connection between two nodes
++	ModifyConnection(ctx context.Context, resName, nodeAName, nodeBName string, props GenericPropsModify) error
++	// GetSnapshots lists all snapshots of a resource
++	GetSnapshots(ctx context.Context, resName string, opts ...*ListOpts) ([]Snapshot, error)
++	// GetSnapshotView gets information about all snapshots
++	GetSnapshotView(ctx context.Context, opts ...*ListOpts) ([]Snapshot, error)
++	// GetSnapshot returns information about a specific Snapshot by its name
++	GetSnapshot(ctx context.Context, resName, snapName string, opts ...*ListOpts) (Snapshot, error)
++	// CreateSnapshot creates a snapshot of a resource
++	CreateSnapshot(ctx context.Context, snapshot Snapshot) error
++	// DeleteSnapshot deletes a snapshot by its name. Specify nodes to only delete snapshots on specific nodes.
++	DeleteSnapshot(ctx context.Context, resName, snapName string, nodes ...string) error
++	// RestoreSnapshot restores a snapshot on a resource
++	RestoreSnapshot(ctx context.Context, origResName, snapName string, snapRestoreConf SnapshotRestore) error
++	// RestoreVolumeDefinitionSnapshot restores a volume-definition-snapshot on a resource
++	RestoreVolumeDefinitionSnapshot(ctx context.Context, origResName, snapName string, snapRestoreConf SnapshotRestore) error
++	// RollbackSnapshot rolls back a snapshot from a specific resource
++	RollbackSnapshot(ctx context.Context, resName, snapName string) error
++	// EnableSnapshotShipping enables snapshot shipping for a resource
++	EnableSnapshotShipping(ctx context.Context, resName string, ship SnapshotShipping) error
++	// ModifyDRBDProxy is used to modify drbd-proxy properties
++	ModifyDRBDProxy(ctx context.Context, resName string, props DrbdProxyModify) error
++	// EnableDRBDProxy is used to enable drbd-proxy with the rest-api call from the function enableDisableDRBDProxy
++	EnableDRBDProxy(ctx context.Context, resName, nodeAName, nodeBName string) error
++	// DisableDRBDProxy is used to disable drbd-proxy with the rest-api call from the function enableDisableDRBDProxy
++	DisableDRBDProxy(ctx context.Context, resName, nodeAName, nodeBName string) error
++	// QueryMaxVolumeSize finds the maximum size of a volume for a given filter
++	QueryMaxVolumeSize(ctx context.Context, filter AutoSelectFilter) (MaxVolumeSizes, error)
++	// GetSnapshotShippings gets a view of all snapshot shippings
++	GetSnapshotShippings(ctx context.Context, opts ...*ListOpts) ([]SnapshotShippingStatus, error)
++	// GetPropsInfos gets meta information about the properties that can be
++	// set on a resource.
++	GetPropsInfos(ctx context.Context, resName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetVolumeDefinitionPropsInfos gets meta information about the
++	// properties that can be set on a volume definition.
++	GetVolumeDefinitionPropsInfos(ctx context.Context, resName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetVolumePropsInfos gets meta information about the properties that
++	// can be set on a volume.
++	GetVolumePropsInfos(ctx context.Context, resName, nodeName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetConnectionPropsInfos gets meta information about the properties
++	// that can be set on a connection.
++	GetConnectionPropsInfos(ctx context.Context, resName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// Activate starts an inactive resource on a given node.
++	Activate(ctx context.Context, resName string, nodeName string) error
++	// Deactivate stops an active resource on given node.
++	Deactivate(ctx context.Context, resName string, nodeName string) error
++	// MakeAvailable adds a resource on a node if not already deployed.
++	// To use a specific storage pool add the StorPoolName property and use
++	// the storage pool name as value. If the StorPoolName property is not
++	// set, a storage pool will be chosen automatically using the
++	// auto-placer.
++	// To create a diskless resource you have to set the "DISKLESS" flag in
++	// the flags list.
++	MakeAvailable(ctx context.Context, resName, nodeName string, makeAvailable ResourceMakeAvailable) error
++}
++
++var _ ResourceProvider = &ResourceService{}
++
+ // volumeLayerIn is a struct for volume-layers
+ type volumeLayerIn struct {
+-	Type LayerType       `json:"type,omitempty"`
+-	Data json.RawMessage `json:"data,omitempty"`
++	Type devicelayerkind.DeviceLayerKind `json:"type,omitempty"`
++	Data json.RawMessage                 `json:"data,omitempty"`
+ }
+ 
+ // UnmarshalJSON fulfills the unmarshal interface for the VolumeLayer type
+@@ -315,7 +488,7 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ 
+ 	v.Type = vIn.Type
+ 	switch v.Type {
+-	case DRBD:
++	case devicelayerkind.Drbd:
+ 		dst := new(DrbdVolume)
+ 		if vIn.Data != nil {
+ 			if err := json.Unmarshal(vIn.Data, &dst); err != nil {
+@@ -323,7 +496,7 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		v.Data = dst
+-	case LUKS:
++	case devicelayerkind.Luks:
+ 		dst := new(LuksVolume)
+ 		if vIn.Data != nil {
+ 			if err := json.Unmarshal(vIn.Data, &dst); err != nil {
+@@ -331,7 +504,7 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		v.Data = dst
+-	case STORAGE:
++	case devicelayerkind.Storage:
+ 		dst := new(StorageVolume)
+ 		if vIn.Data != nil {
+ 			if err := json.Unmarshal(vIn.Data, &dst); err != nil {
+@@ -339,7 +512,7 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		v.Data = dst
+-	case NVME:
++	case devicelayerkind.Nvme:
+ 		dst := new(NvmeVolume)
+ 		if vIn.Data != nil {
+ 			if err := json.Unmarshal(vIn.Data, &dst); err != nil {
+@@ -347,7 +520,7 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		v.Data = dst
+-	case WRITECACHE:
++	case devicelayerkind.Writecache:
+ 		dst := new(WritecacheVolume)
+ 		if vIn.Data != nil {
+ 			if err := json.Unmarshal(vIn.Data, &dst); err != nil {
+@@ -355,6 +528,9 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		v.Data = dst
++	case devicelayerkind.Cache:
++	case devicelayerkind.Openflex:
++	case devicelayerkind.Exos:
+ 	default:
+ 		return fmt.Errorf("'%+v' is not a valid type to Unmarshal", v.Type)
+ 	}
+@@ -363,19 +539,22 @@ func (v *VolumeLayer) UnmarshalJSON(b []byte) error {
+ }
+ 
+ // OneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume is used to prevent that other types than drbd- luks- and storage-volume are used for a VolumeLayer
+-type OneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume interface {
+-	isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume()
++type OneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume interface {
++	isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume()
+ }
+ 
+ // Functions which are used if type is a correct VolumeLayer
+-func (d *DrbdVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume() {}
+-func (d *LuksVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume() {}
+-func (d *StorageVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume() {
++func (d *DrbdVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume() {
++}
++func (d *LuksVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume() {
++}
++func (d *StorageVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume() {
++}
++func (d *NvmeVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume() {
+ }
+-func (d *NvmeVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume() {}
+-func (d *WritecacheVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume() {
++func (d *WritecacheVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume() {
+ }
+-func (d *CacheVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolume() {
++func (d *CacheVolume) isOneOfDrbdVolumeLuksVolumeStorageVolumeNvmeVolumeWritecacheVolumeCacheVolumeBCacheVolume() {
+ }
+ 
+ // GetResourceView returns all resources in the cluster. Filters can be set via ListOpts.
+@@ -406,7 +585,7 @@ func (n *ResourceService) Create(ctx context.Context, res ResourceCreate) error
+ }
+ 
+ // Modify gives the ability to modify a resource on a node
+-func (n *ResourceService) Modify(ctx context.Context, resName, nodeName string, props ResourceDefinitionModify) error {
++func (n *ResourceService) Modify(ctx context.Context, resName, nodeName string, props GenericPropsModify) error {
+ 	_, err := n.client.doPUT(ctx, "/v1/resource-definitions/"+resName+"/resources/"+nodeName, props)
+ 	return err
+ }
+@@ -417,6 +596,16 @@ func (n *ResourceService) Delete(ctx context.Context, resName, nodeName string)
+ 	return err
+ }
+ 
++func (n *ResourceService) Activate(ctx context.Context, resName, nodeName string) error {
++	_, err := n.client.doPOST(ctx, "/v1/resource-definitions/"+resName+"/resources/"+nodeName+"/activate", nil)
++	return err
++}
++
++func (n *ResourceService) Deactivate(ctx context.Context, resName, nodeName string) error {
++	_, err := n.client.doPOST(ctx, "/v1/resource-definitions/"+resName+"/resources/"+nodeName+"/deactivate", nil)
++	return err
++}
++
+ // GetVolumes lists als volumes of a resource
+ func (n *ResourceService) GetVolumes(ctx context.Context, resName, nodeName string, opts ...*ListOpts) ([]Volume, error) {
+ 	var vols []Volume
+@@ -446,17 +635,18 @@ func (n *ResourceService) Diskless(ctx context.Context, resName, nodeName, diskl
+ 	if disklessPoolName != "" {
+ 		u += "/" + disklessPoolName
+ 	}
++
+ 	_, err := n.client.doPUT(ctx, u, nil)
+ 	return err
+ }
+ 
+ // Diskful toggles a resource to diskful - the parameter storagepool can be set if its needed
+-func (n *ResourceService) Diskful(ctx context.Context, resName, nodeName, storagePoolName string) error {
++func (n *ResourceService) Diskful(ctx context.Context, resName, nodeName, storagePoolName string, props *ToggleDiskDiskfulProps) error {
+ 	u := "/v1/resource-definitions/" + resName + "/resources/" + nodeName + "/toggle-disk/diskful"
+ 	if storagePoolName != "" {
+ 		u += "/" + storagePoolName
+ 	}
+-	_, err := n.client.doPUT(ctx, u, nil)
++	_, err := n.client.doPUT(ctx, u, props)
+ 	return err
+ }
+ 
+@@ -504,6 +694,13 @@ func (n *ResourceService) GetSnapshots(ctx context.Context, resName string, opts
+ 	return snaps, err
+ }
+ 
++// GetSnapshotView gets information about all snapshots
++func (r *ResourceService) GetSnapshotView(ctx context.Context, opts ...*ListOpts) ([]Snapshot, error) {
++	var snaps []Snapshot
++	_, err := r.client.doGET(ctx, "/v1/view/snapshots", &snaps, opts...)
++	return snaps, err
++}
++
+ // GetSnapshot returns information about a specific Snapshot by its name
+ func (n *ResourceService) GetSnapshot(ctx context.Context, resName, snapName string, opts ...*ListOpts) (Snapshot, error) {
+ 	var snap Snapshot
+@@ -518,9 +715,16 @@ func (n *ResourceService) CreateSnapshot(ctx context.Context, snapshot Snapshot)
+ 	return err
+ }
+ 
+-// DeleteSnapshot deletes a snapshot by its name
+-func (n *ResourceService) DeleteSnapshot(ctx context.Context, resName, snapName string) error {
+-	_, err := n.client.doDELETE(ctx, "/v1/resource-definitions/"+resName+"/snapshots/"+snapName, nil)
++// DeleteSnapshot deletes a snapshot by its name. Specify nodes to only delete snapshots on specific nodes.
++func (n *ResourceService) DeleteSnapshot(ctx context.Context, resName, snapName string, nodes ...string) error {
++	vals, err := query.Values(struct {
++		Nodes []string `url:"nodes"`
++	}{Nodes: nodes})
++	if err != nil {
++		return fmt.Errorf("failed to encode node names: %w", err)
++	}
++
++	_, err = n.client.doDELETE(ctx, "/v1/resource-definitions/"+resName+"/snapshots/"+snapName+"?"+vals.Encode(), nil)
+ 	return err
+ }
+ 
+@@ -542,6 +746,12 @@ func (n *ResourceService) RollbackSnapshot(ctx context.Context, resName, snapNam
+ 	return err
+ }
+ 
++// EnableSnapshotShipping enables snapshot shipping for a resource
++func (n *ResourceService) EnableSnapshotShipping(ctx context.Context, resName string, ship SnapshotShipping) error {
++	_, err := n.client.doPOST(ctx, "/v1/resource-definitions/"+resName+"/snapshot-shipping", ship)
++	return err
++}
++
+ // ModifyDRBDProxy is used to modify drbd-proxy properties
+ func (n *ResourceService) ModifyDRBDProxy(ctx context.Context, resName string, props DrbdProxyModify) error {
+ 	_, err := n.client.doPUT(ctx, "/v1/resource-definitions/"+resName+"/drbd-proxy", props)
+@@ -571,3 +781,55 @@ func (n *ResourceService) QueryMaxVolumeSize(ctx context.Context, filter AutoSel
+ 	_, err := n.client.doOPTIONS(ctx, "/v1/query-max-volume-size", &sizes, filter)
+ 	return sizes, err
+ }
++
++// GetSnapshotShippings gets a view of all snapshot shippings
++func (n *ResourceService) GetSnapshotShippings(ctx context.Context, opts ...*ListOpts) ([]SnapshotShippingStatus, error) {
++	var shippings []SnapshotShippingStatus
++	_, err := n.client.doGET(ctx, "/v1/view/snapshot-shippings", &shippings, opts...)
++	return shippings, err
++}
++
++// GetPropsInfos gets meta information about the properties that can be set on
++// a resource.
++func (n *ResourceService) GetPropsInfos(ctx context.Context, resName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/"+resName+"/resources/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// GetVolumeDefinitionPropsInfos gets meta information about the properties
++// that can be set on a volume definition.
++func (n *ResourceService) GetVolumeDefinitionPropsInfos(ctx context.Context, resName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/"+resName+"/volume-definitions/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// GetVolumePropsInfos gets meta information about the properties that can be
++// set on a volume.
++func (n *ResourceService) GetVolumePropsInfos(ctx context.Context, resName, nodeName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/"+resName+"/resources/"+nodeName+"/volumes/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// GetConnectionPropsInfos gets meta information about the properties that can
++// be set on a connection.
++func (n *ResourceService) GetConnectionPropsInfos(ctx context.Context, resName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/"+resName+"/resource-connections/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// MakeAvailable adds a resource on a node if not already deployed.
++// To use a specific storage pool add the StorPoolName property and use the
++// storage pool name as value. If the StorPoolName property is not set, a
++// storage pool will be chosen automatically using the auto-placer.
++// To create a diskless resource you have to set the "DISKLESS" flag in the
++// flags list.
++func (n *ResourceService) MakeAvailable(ctx context.Context, resName, nodeName string, makeAvailable ResourceMakeAvailable) error {
++	u := fmt.Sprintf("/v1/resource-definitions/%s/resources/%s/make-available",
++		resName, nodeName)
++	_, err := n.client.doPOST(ctx, u, makeAvailable)
++	return err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/resourcedefinition.go b/vendor/github.com/LINBIT/golinstor/client/resourcedefinition.go
+index 1a91bd1d16..b30e155aa2 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/resourcedefinition.go
++++ b/vendor/github.com/LINBIT/golinstor/client/resourcedefinition.go
+@@ -21,7 +21,13 @@ import (
+ 	"context"
+ 	"encoding/json"
+ 	"fmt"
++	"net/url"
+ 	"strconv"
++
++	"github.com/google/go-querystring/query"
++
++	"github.com/LINBIT/golinstor/clonestatus"
++	"github.com/LINBIT/golinstor/devicelayerkind"
+ )
+ 
+ // ResourceDefinitionService is a struct for the client pointer
+@@ -56,7 +62,7 @@ type ResourceDefinitionCreate struct {
+ 
+ // ResourceDefinitionLayer is a struct for the storing the layertype of a resource-defintion
+ type ResourceDefinitionLayer struct {
+-	Type LayerType                                                       `json:"type,omitempty"`
++	Type devicelayerkind.DeviceLayerKind                                 `json:"type,omitempty"`
+ 	Data OneOfDrbdResourceDefinitionLayerOpenflexResourceDefinitionLayer `json:"data,omitempty"`
+ }
+ 
+@@ -73,20 +79,6 @@ type DrbdResourceDefinitionLayer struct {
+ 	Down   bool   `json:"down,omitempty"`
+ }
+ 
+-// LayerType initialized as string
+-type LayerType string
+-
+-// List of LayerType
+-const (
+-	DRBD       LayerType = "DRBD"
+-	LUKS       LayerType = "LUKS"
+-	STORAGE    LayerType = "STORAGE"
+-	NVME       LayerType = "NVME"
+-	WRITECACHE LayerType = "WRITECACHE"
+-	CACHE      LayerType = "CACHE"
+-	OPENFLEX   LayerType = "OPENFLEX"
+-)
+-
+ // VolumeDefinitionCreate is a struct used for creating volume-definitions
+ type VolumeDefinitionCreate struct {
+ 	VolumeDefinition VolumeDefinition `json:"volume_definition"`
+@@ -115,8 +107,8 @@ type VolumeDefinitionModify struct {
+ 
+ // VolumeDefinitionLayer is a struct for the layer-type of a volume-definition
+ type VolumeDefinitionLayer struct {
+-	Type LayerType                 `json:"type"`
+-	Data OneOfDrbdVolumeDefinition `json:"data,omitempty"`
++	Type devicelayerkind.DeviceLayerKind `json:"type"`
++	Data OneOfDrbdVolumeDefinition       `json:"data,omitempty"`
+ }
+ 
+ // DrbdVolumeDefinition is a struct containing volume-definition on drbd level
+@@ -126,12 +118,92 @@ type DrbdVolumeDefinition struct {
+ 	MinorNumber        int32  `json:"minor_number,omitempty"`
+ }
+ 
++type ResourceDefinitionCloneRequest struct {
++	Name         string `json:"name,omitempty"`
++	ExternalName string `json:"external_name,omitempty"`
++}
++
++type ResourceDefinitionCloneStarted struct {
++	// Path for clone status
++	Location string `json:"location"`
++	// name of the source resource
++	SourceName string `json:"source_name"`
++	// name of the clone resource
++	CloneName string       `json:"clone_name"`
++	Messages  *[]ApiCallRc `json:"messages,omitempty"`
++}
++
++type ResourceDefinitionCloneStatus struct {
++	Status clonestatus.CloneStatus `json:"status"`
++}
++
+ // custom code
+ 
++type ResourceDefinitionWithVolumeDefinition struct {
++	ResourceDefinition
++	VolumeDefinitions []VolumeDefinition `json:"volume_definitions,omitempty"`
++}
++
++type RDGetAllRequest struct {
++	// ResourceDefinitions filters the returned resource definitions by the given names
++	ResourceDefinitions   []string `url:"resource_definitions,omitempty"`
++	// Props filters the returned resource definitions on their property values (uses key=value syntax)
++	Props                 []string `url:"props,omitempty"`
++	Offset                int      `url:"offset,omitempty"`
++	Limit                 int      `url:"offset,omitempty"`
++	// WithVolumeDefinitions, if set to true, LINSTOR will also include volume definitions in the response.
++	WithVolumeDefinitions bool     `url:"with_volume_definitions,omitempty"`
++}
++
++// ResourceDefinitionProvider acts as an abstraction for a
++// ResourceDefinitionService. It can be swapped out for another
++// ResourceDefinitionService implementation, for example for testing.
++type ResourceDefinitionProvider interface {
++	// GetAll lists all resource-definitions
++	GetAll(ctx context.Context, request RDGetAllRequest) ([]ResourceDefinitionWithVolumeDefinition, error)
++	// Get return information about a resource-defintion
++	Get(ctx context.Context, resDefName string, opts ...*ListOpts) (ResourceDefinition, error)
++	// Create adds a new resource-definition
++	Create(ctx context.Context, resDef ResourceDefinitionCreate) error
++	// Modify allows to modify a resource-definition
++	Modify(ctx context.Context, resDefName string, props GenericPropsModify) error
++	// Delete completely deletes a resource-definition
++	Delete(ctx context.Context, resDefName string) error
++	// GetVolumeDefinitions returns all volume-definitions of a resource-definition
++	GetVolumeDefinitions(ctx context.Context, resDefName string, opts ...*ListOpts) ([]VolumeDefinition, error)
++	// GetVolumeDefinition shows the properties of a specific volume-definition
++	GetVolumeDefinition(ctx context.Context, resDefName string, volNr int, opts ...*ListOpts) (VolumeDefinition, error)
++	// CreateVolumeDefinition adds a volume-definition to a resource-definition. Only the size is required.
++	CreateVolumeDefinition(ctx context.Context, resDefName string, volDef VolumeDefinitionCreate) error
++	// ModifyVolumeDefinition give the abilty to modify a specific volume-definition
++	ModifyVolumeDefinition(ctx context.Context, resDefName string, volNr int, props VolumeDefinitionModify) error
++	// DeleteVolumeDefinition deletes a specific volume-definition
++	DeleteVolumeDefinition(ctx context.Context, resDefName string, volNr int) error
++	// GetPropsInfos gets meta information about the properties that can be
++	// set on a resource definition.
++	GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetDRBDProxyPropsInfos gets meta information about the properties
++	// that can be set on a resource definition for drbd proxy.
++	GetDRBDProxyPropsInfos(ctx context.Context, resDefName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// AttachExternalFile adds an external file to the resource definition. This
++	// means that the file will be deployed to every node the resource is deployed on.
++	AttachExternalFile(ctx context.Context, resDefName string, filePath string) error
++	// DetachExternalFile removes a binding between an external file and a resource definition.
++	// This means that the file will no longer be deployed on every node the resource
++	// is deployed on.
++	DetachExternalFile(ctx context.Context, resDefName string, filePath string) error
++	// Clone starts cloning a resource definition and all resources using a method optimized for the storage driver.
++	Clone(ctx context.Context, srcResDef string, request ResourceDefinitionCloneRequest) (ResourceDefinitionCloneStarted, error)
++	// CloneStatus fetches the current status of a clone operation started by Clone.
++	CloneStatus(ctx context.Context, srcResDef, targetResDef string) (ResourceDefinitionCloneStatus, error)
++}
++
++var _ ResourceDefinitionProvider = &ResourceDefinitionService{}
++
+ // resourceDefinitionLayerIn is a struct for resource-definitions
+ type resourceDefinitionLayerIn struct {
+-	Type LayerType       `json:"type,omitempty"`
+-	Data json.RawMessage `json:"data,omitempty"`
++	Type devicelayerkind.DeviceLayerKind `json:"type,omitempty"`
++	Data json.RawMessage                 `json:"data,omitempty"`
+ }
+ 
+ // UnmarshalJSON is needed for the unmarshal interface for ResourceDefinitionLayer types
+@@ -143,7 +215,7 @@ func (rd *ResourceDefinitionLayer) UnmarshalJSON(b []byte) error {
+ 
+ 	rd.Type = rdIn.Type
+ 	switch rd.Type {
+-	case DRBD:
++	case devicelayerkind.Drbd:
+ 		dst := new(DrbdResourceDefinitionLayer)
+ 		if rdIn.Data != nil {
+ 			if err := json.Unmarshal(rdIn.Data, &dst); err != nil {
+@@ -151,7 +223,7 @@ func (rd *ResourceDefinitionLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		rd.Data = dst
+-	case OPENFLEX:
++	case devicelayerkind.Openflex:
+ 		dst := new(OpenflexResourceDefinitionLayer)
+ 		if rdIn.Data != nil {
+ 			if err := json.Unmarshal(rdIn.Data, &dst); err != nil {
+@@ -159,7 +231,7 @@ func (rd *ResourceDefinitionLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		rd.Data = dst
+-	case LUKS, STORAGE, NVME, WRITECACHE, CACHE: // valid types, but do not set data
++	case devicelayerkind.Luks, devicelayerkind.Storage, devicelayerkind.Nvme, devicelayerkind.Writecache, devicelayerkind.Cache, devicelayerkind.Exos: // valid types, but do not set data
+ 	default:
+ 		return fmt.Errorf("'%+v' is not a valid type to Unmarshal", rd.Type)
+ 	}
+@@ -178,8 +250,8 @@ func (d *DrbdResourceDefinitionLayer) isOneOfDrbdResourceDefinitionLayerOpenflex
+ 
+ //volumeDefinitionLayerIn is a struct for volume-defintion-layers
+ type volumeDefinitionLayerIn struct {
+-	Type LayerType       `json:"type,omitempty"`
+-	Data json.RawMessage `json:"data,omitempty"`
++	Type devicelayerkind.DeviceLayerKind `json:"type,omitempty"`
++	Data json.RawMessage                 `json:"data,omitempty"`
+ }
+ 
+ // UnmarshalJSON is needed for the unmarshal interface for VolumeDefinitionLayer types
+@@ -191,7 +263,7 @@ func (vd *VolumeDefinitionLayer) UnmarshalJSON(b []byte) error {
+ 
+ 	vd.Type = vdIn.Type
+ 	switch vd.Type {
+-	case DRBD:
++	case devicelayerkind.Drbd:
+ 		dst := new(DrbdVolumeDefinition)
+ 		if vdIn.Data != nil {
+ 			if err := json.Unmarshal(vdIn.Data, &dst); err != nil {
+@@ -199,7 +271,7 @@ func (vd *VolumeDefinitionLayer) UnmarshalJSON(b []byte) error {
+ 			}
+ 		}
+ 		vd.Data = dst
+-	case LUKS, STORAGE, NVME, WRITECACHE: // valid types, but do not set data
++	case devicelayerkind.Luks, devicelayerkind.Storage, devicelayerkind.Nvme, devicelayerkind.Writecache, devicelayerkind.Openflex, devicelayerkind.Cache, devicelayerkind.Exos: // valid types, but do not set data
+ 	default:
+ 		return fmt.Errorf("'%+v' is not a valid type to Unmarshal", vd.Type)
+ 	}
+@@ -216,9 +288,14 @@ type OneOfDrbdVolumeDefinition interface {
+ func (d *DrbdVolumeDefinition) isOneOfDrbdVolumeDefinition() {}
+ 
+ // GetAll lists all resource-definitions
+-func (n *ResourceDefinitionService) GetAll(ctx context.Context, opts ...*ListOpts) ([]ResourceDefinition, error) {
+-	var resDefs []ResourceDefinition
+-	_, err := n.client.doGET(ctx, "/v1/resource-definitions", &resDefs, opts...)
++func (n *ResourceDefinitionService) GetAll(ctx context.Context, request RDGetAllRequest) ([]ResourceDefinitionWithVolumeDefinition, error) {
++	val, err := query.Values(request)
++	if err != nil {
++		return nil, err
++	}
++
++	var resDefs []ResourceDefinitionWithVolumeDefinition
++	_, err = n.client.doGET(ctx, "/v1/resource-definitions?"+val.Encode(), &resDefs)
+ 	return resDefs, err
+ }
+ 
+@@ -278,3 +355,58 @@ func (n *ResourceDefinitionService) DeleteVolumeDefinition(ctx context.Context,
+ 	_, err := n.client.doDELETE(ctx, "/v1/resource-definitions/"+resDefName+"/volume-definitions/"+strconv.Itoa(volNr), nil)
+ 	return err
+ }
++
++// GetPropsInfos gets meta information about the properties that can be set on
++// a resource definition.
++func (n *ResourceDefinitionService) GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// GetDRBDProxyPropsInfos gets meta information about the properties that can
++// be set on a resource definition for drbd proxy.
++func (n *ResourceDefinitionService) GetDRBDProxyPropsInfos(ctx context.Context, resDefName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/"+resDefName+"/drbd-proxy/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// AttachExternalFile adds an external file to the resource definition. This
++// means that the file will be deployed to every node the resource is deployed on.
++func (n *ResourceDefinitionService) AttachExternalFile(ctx context.Context, resDefName string, filePath string) error {
++	_, err := n.client.doPOST(ctx, "/v1/resource-definitions/"+resDefName+"/files/"+url.QueryEscape(filePath), nil)
++	return err
++}
++
++// DetachExternalFile removes a binding between an external file and a resource definition.
++// This means that the file will no longer be deployed on every node the resource
++// is deployed on.
++func (n *ResourceDefinitionService) DetachExternalFile(ctx context.Context, resDefName string, filePath string) error {
++	_, err := n.client.doDELETE(ctx, "/v1/resource-definitions/"+resDefName+"/files/"+url.QueryEscape(filePath), nil)
++	return err
++}
++
++// Clone starts cloning a resource definition and all resources using a method optimized for the storage driver.
++func (n *ResourceDefinitionService) Clone(ctx context.Context, srcResDef string, request ResourceDefinitionCloneRequest) (ResourceDefinitionCloneStarted, error) {
++	var resp ResourceDefinitionCloneStarted
++
++	req, err := n.client.newRequest("POST", "/v1/resource-definitions/"+srcResDef+"/clone", request)
++	if err != nil {
++		return ResourceDefinitionCloneStarted{}, err
++	}
++
++	_, err = n.client.do(ctx, req, &resp)
++	if err != nil {
++		return ResourceDefinitionCloneStarted{}, err
++	}
++
++	return resp, nil
++}
++
++// CloneStatus fetches the current status of a clone operation started by Clone.
++func (n *ResourceDefinitionService) CloneStatus(ctx context.Context, srcResDef, targetResDef string) (ResourceDefinitionCloneStatus, error) {
++	var status ResourceDefinitionCloneStatus
++	_, err := n.client.doGET(ctx, "/v1/resource-definitions/"+srcResDef+"/clone/"+targetResDef, &status)
++	return status, err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/resourcegroup.go b/vendor/github.com/LINBIT/golinstor/client/resourcegroup.go
+index 41dcf7e82c..079184c428 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/resourcegroup.go
++++ b/vendor/github.com/LINBIT/golinstor/client/resourcegroup.go
+@@ -47,13 +47,18 @@ type ResourceGroupSpawn struct {
+ 	// External name can be used to have native resource names. If you need to store a non Linstor compatible resource name use this field and Linstor will generate a compatible name.
+ 	ResourceDefinitionExternalName string `json:"resource_definition_external_name,omitempty"`
+ 	// sizes (in kib) of the resulting volume-definitions
+-	VolumeSizes []int64 `json:"volume_sizes,omitempty"`
++	VolumeSizes  []int64          `json:"volume_sizes,omitempty"`
++	SelectFilter AutoSelectFilter `json:"select_filter,omitempty"`
+ 	// If false, the length of the vlm_sizes has to match the number of volume-groups or an error is returned.  If true and there are more vlm_sizes than volume-groups, the additional volume-definitions will simply have no pre-set properties (i.e. \"empty\" volume-definitions) If true and there are less vlm_sizes than volume-groups, the additional volume-groups won't be used.  If the count of vlm_sizes matches the number of volume-groups, this \"partial\" parameter has no effect.
+ 	Partial bool `json:"partial,omitempty"`
+ 	// If true, the spawn command will only create the resource-definition with the volume-definitions but will not perform an auto-place, even if it is configured.
+ 	DefinitionsOnly bool `json:"definitions_only,omitempty"`
+ }
+ 
++type ResourceGroupAdjust struct {
++	SelectFilter *AutoSelectFilter `json:"select_filter,omitempty"`
++}
++
+ type VolumeGroup struct {
+ 	VolumeNumber int32 `json:"volume_number,omitempty"`
+ 	// A string to string property map.
+@@ -74,6 +79,45 @@ type VolumeGroupModify struct {
+ 
+ // custom code
+ 
++// ResourceGroupProvider acts as an abstraction for a
++// ResourceGroupService. It can be swapped out for another
++// ResourceGroupService implementation, for example for testing.
++type ResourceGroupProvider interface {
++	// GetAll lists all resource-groups
++	GetAll(ctx context.Context, opts ...*ListOpts) ([]ResourceGroup, error)
++	// Get return information about a resource-defintion
++	Get(ctx context.Context, resGrpName string, opts ...*ListOpts) (ResourceGroup, error)
++	// Create adds a new resource-group
++	Create(ctx context.Context, resGrp ResourceGroup) error
++	// Modify allows to modify a resource-group
++	Modify(ctx context.Context, resGrpName string, props ResourceGroupModify) error
++	// Delete deletes a resource-group
++	Delete(ctx context.Context, resGrpName string) error
++	// Spawn creates a new resource-definition and auto-deploys if configured to do so
++	Spawn(ctx context.Context, resGrpName string, resGrpSpwn ResourceGroupSpawn) error
++	// GetVolumeGroups lists all volume-groups for a resource-group
++	GetVolumeGroups(ctx context.Context, resGrpName string, opts ...*ListOpts) ([]VolumeGroup, error)
++	// GetVolumeGroup lists a volume-group for a resource-group
++	GetVolumeGroup(ctx context.Context, resGrpName string, volNr int, opts ...*ListOpts) (VolumeGroup, error)
++	// Create adds a new volume-group to a resource-group
++	CreateVolumeGroup(ctx context.Context, resGrpName string, volGrp VolumeGroup) error
++	// Modify allows to modify a volume-group of a resource-group
++	ModifyVolumeGroup(ctx context.Context, resGrpName string, volNr int, props VolumeGroupModify) error
++	DeleteVolumeGroup(ctx context.Context, resGrpName string, volNr int) error
++	// GetPropsInfos gets meta information about the properties that can be
++	// set on a resource group.
++	GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error)
++	// GetVolumeGroupPropsInfos gets meta information about the properties
++	// that can be set on a resource group.
++	GetVolumeGroupPropsInfos(ctx context.Context, resGrpName string, opts ...*ListOpts) ([]PropsInfo, error)
++	// Adjust all resource-definitions (calls autoplace for) of the given resource-group
++	Adjust(ctx context.Context, resGrpName string, adjust ResourceGroupAdjust) error
++	// AdjustAll adjusts all resource-definitions (calls autoplace) according to their associated resource group.
++	AdjustAll(ctx context.Context, adjust ResourceGroupAdjust) error
++}
++
++var _ ResourceGroupProvider = &ResourceGroupService{}
++
+ // ResourceGroupService is the service that deals with resource group related tasks.
+ type ResourceGroupService struct {
+ 	client *Client
+@@ -147,3 +191,31 @@ func (n *ResourceGroupService) DeleteVolumeGroup(ctx context.Context, resGrpName
+ 	_, err := n.client.doDELETE(ctx, "/v1/resource-groups/"+resGrpName+"/volume-groups/"+strconv.Itoa(volNr), nil)
+ 	return err
+ }
++
++// GetPropsInfos gets meta information about the properties that can be set on
++// a resource group.
++func (n *ResourceGroupService) GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-groups/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// GetVolumeGroupPropsInfos gets meta information about the properties that can
++// be set on a resource group.
++func (n *ResourceGroupService) GetVolumeGroupPropsInfos(ctx context.Context, resGrpName string, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := n.client.doGET(ctx, "/v1/resource-groups/"+resGrpName+"/volume-groups/properties/info", &infos, opts...)
++	return infos, err
++}
++
++// Adjust all resource-definitions (calls autoplace for) of the given resource-group
++func (n *ResourceGroupService) Adjust(ctx context.Context, resGrpName string, adjust ResourceGroupAdjust) error {
++	_, err := n.client.doPOST(ctx, "/v1/resource-groups/"+resGrpName+"/adjust", adjust)
++	return err
++}
++
++// AdjustAll adjusts all resource-definitions (calls autoplace) according to their associated resource group.
++func (n *ResourceGroupService) AdjustAll(ctx context.Context, adjust ResourceGroupAdjust) error {
++	_, err := n.client.doPOST(ctx, "/v1/resource-groups/adjustall", adjust)
++	return err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/sse.go b/vendor/github.com/LINBIT/golinstor/client/sse.go
+new file mode 100644
+index 0000000000..8d9362fd13
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/client/sse.go
+@@ -0,0 +1,99 @@
++package client
++
++import (
++	"context"
++	"encoding/json"
++
++	"github.com/donovanhide/eventsource"
++)
++
++type EventMayPromoteChange struct {
++	ResourceName string `json:"resource_name,omitempty"`
++	NodeName     string `json:"node_name,omitempty"`
++	MayPromote   bool   `json:"may_promote,omitempty"`
++}
++
++// custom code
++
++// EventProvider acts as an abstraction for an EventService. It can be swapped
++// out for another EventService implementation, for example for testing.
++type EventProvider interface {
++	// DRBDPromotion is used to subscribe to LINSTOR DRBD Promotion events
++	DRBDPromotion(ctx context.Context, lastEventId string) (*DRBDMayPromoteStream, error)
++}
++
++const mayPromoteChange = "may-promote-change"
++
++// EventService is the service that deals with LINSTOR server side event streams.
++type EventService struct {
++	client *Client
++}
++
++// DRBDMayPromoteStream is a struct that contains a channel of EventMayPromoteChange events
++// It has a Close() method that needs to be called/defered.
++type DRBDMayPromoteStream struct {
++	Events chan EventMayPromoteChange
++	stream *eventsource.Stream
++}
++
++// Close is used to close the underlying stream and all Go routines
++func (dmp *DRBDMayPromoteStream) Close() {
++	dmp.stream.Close()
++}
++
++// suscribe handles stream creation, event splitting, and context cancelation
++func (e *EventService) subscribe(ctx context.Context, url, event, lastEventId string) (*eventsource.Stream, chan interface{}, error) {
++	stream, err := e.client.doEvent(ctx, url, lastEventId)
++	if err != nil {
++		return nil, nil, err
++	}
++
++	ch := make(chan interface{})
++	go func() {
++		defer close(ch)
++		for {
++			select {
++			case ev, ok := <-stream.Events:
++				if !ok { // most likely someone called Close()
++					return
++				}
++				if ev.Event() == event {
++					switch event {
++					case mayPromoteChange:
++						var empc EventMayPromoteChange
++						if err := json.Unmarshal([]byte(ev.Data()), &empc); err == nil {
++							ch <- empc
++						}
++					}
++				}
++			case <-ctx.Done():
++				return
++			}
++		}
++	}()
++
++	return stream, ch, nil
++}
++
++// DRBDPromotion is used to subscribe to LINSTOR DRBD Promotion events
++func (e *EventService) DRBDPromotion(ctx context.Context, lastEventId string) (*DRBDMayPromoteStream, error) {
++	stream, ch, err := e.subscribe(ctx, "/v1/events/drbd/promotion", mayPromoteChange, lastEventId)
++	if err != nil {
++		return nil, err
++	}
++
++	empch := make(chan EventMayPromoteChange)
++	go func() {
++		defer close(empch)
++		for ev := range ch {
++			if e, ok := ev.(EventMayPromoteChange); ok {
++				empch <- e
++			}
++		}
++	}()
++
++	return &DRBDMayPromoteStream{
++		Events: empch,
++		stream: stream,
++	}, nil
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/storagepooldefinition.go b/vendor/github.com/LINBIT/golinstor/client/storagepooldefinition.go
+index ca6fecf82b..72f4821507 100644
+--- a/vendor/github.com/LINBIT/golinstor/client/storagepooldefinition.go
++++ b/vendor/github.com/LINBIT/golinstor/client/storagepooldefinition.go
+@@ -16,6 +16,27 @@ type StoragePoolDefinitionModify struct {
+ 
+ // custom code
+ 
++// StoragePoolDefinitionProvider acts as an abstraction for a
++// StoragePoolDefinitionService. It can be swapped out for another
++// StoragePoolDefinitionService implementation, for example for testing.
++type StoragePoolDefinitionProvider interface {
++	// GetAll gets information for all existing storage pool definitions.
++	GetAll(ctx context.Context, opts ...*ListOpts) ([]StoragePoolDefinition, error)
++	// Get gets information for a particular storage pool definition.
++	Get(ctx context.Context, spdName string, opts ...*ListOpts) (StoragePoolDefinition, error)
++	// Create creates a new storage pool definition
++	Create(ctx context.Context, spd StoragePoolDefinition) error
++	// Modify modifies the given storage pool definition and sets/deletes the given properties.
++	Modify(ctx context.Context, spdName string, props StoragePoolDefinitionModify) error
++	// Delete deletes the given storage pool definition.
++	Delete(ctx context.Context, spdName string) error
++	// GetPropsInfos gets meta information about the properties that can be
++	// set on a storage pool definition.
++	GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error)
++}
++
++var _ StoragePoolDefinitionProvider = &StoragePoolDefinitionService{}
++
+ // StoragePoolDefinitionService is the service that deals with storage pool definition related tasks.
+ type StoragePoolDefinitionService struct {
+ 	client *Client
+@@ -52,3 +73,11 @@ func (s *StoragePoolDefinitionService) Delete(ctx context.Context, spdName strin
+ 	_, err := s.client.doDELETE(ctx, "/v1/storage-pool-definitions/"+spdName, nil)
+ 	return err
+ }
++
++// GetPropsInfos gets meta information about the properties that can be set on
++// a storage pool definition.
++func (s *StoragePoolDefinitionService) GetPropsInfos(ctx context.Context, opts ...*ListOpts) ([]PropsInfo, error) {
++	var infos []PropsInfo
++	_, err := s.client.doGET(ctx, "/v1/storage-pool-definitions/properties/info", &infos, opts...)
++	return infos, err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/timestamp.go b/vendor/github.com/LINBIT/golinstor/client/timestamp.go
+new file mode 100644
+index 0000000000..9aec6b3ce1
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/client/timestamp.go
+@@ -0,0 +1,31 @@
++package client
++
++import (
++	"encoding/json"
++	"net/url"
++	"strconv"
++	"time"
++)
++
++type TimeStampMs struct {
++	time.Time
++}
++
++func (t *TimeStampMs) UnmarshalJSON(s []byte) (err error) {
++	r := string(s)
++	q, err := strconv.ParseInt(r, 10, 64)
++	if err != nil {
++		return err
++	}
++	t.Time = time.Unix(q/1000, (q%1000)*1_000_000)
++	return nil
++}
++
++func (t TimeStampMs) MarshalJSON() ([]byte, error) {
++	return json.Marshal(t.Time.Unix() * 1000)
++}
++
++func (t TimeStampMs) EncodeValues(key string, v *url.Values) error {
++	v.Add(key, t.Format("20060102_150405"))
++	return nil
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/client/vendor.go b/vendor/github.com/LINBIT/golinstor/client/vendor.go
+new file mode 100644
+index 0000000000..46f69615cc
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/client/vendor.go
+@@ -0,0 +1,148 @@
++package client
++
++import (
++	"context"
++	"fmt"
++)
++
++// copy & paste from generated code
++
++// ExosConnectionMap struct for ExosConnectionMap
++type ExosConnectionMap struct {
++	NodeName      string   `json:"node_name,omitempty"`
++	EnclosureName string   `json:"enclosure_name,omitempty"`
++	Connections   []string `json:"connections,omitempty"`
++}
++
++// ExosDefaults Default settings for EXOS enclosures
++type ExosDefaults struct {
++	Username    string `json:"username,omitempty"`
++	UsernameEnv string `json:"username_env,omitempty"`
++	Password    string `json:"password,omitempty"`
++	PasswordEnv string `json:"password_env,omitempty"`
++}
++
++// ExosDefaultsModifyAllOf struct for ExosDefaultsModifyAllOf
++type ExosDefaultsModifyAllOf struct {
++	// A list of keys to unset. The keys have to exist in ExosDefaults
++	UnsetKeys []string `json:"unset_keys,omitempty"`
++}
++
++// ExosDefaultsModify struct for ExosDefaultsModify
++type ExosDefaultsModify struct {
++	Username    string `json:"username,omitempty"`
++	UsernameEnv string `json:"username_env,omitempty"`
++	Password    string `json:"password,omitempty"`
++	PasswordEnv string `json:"password_env,omitempty"`
++	// A list of keys to unset. The keys have to exist in ExosDefaults
++	UnsetKeys []string `json:"unset_keys,omitempty"`
++}
++
++// ExosEnclosureEvent EXOS event
++type ExosEnclosureEvent struct {
++	Severity              string `json:"severity,omitempty"`
++	EventId               string `json:"event_id,omitempty"`
++	Controller            string `json:"controller,omitempty"`
++	TimeStamp             string `json:"time_stamp,omitempty"`
++	TimeStampNumeric      int64  `json:"time_stamp_numeric,omitempty"`
++	Message               string `json:"message,omitempty"`
++	AdditionalInformation string `json:"additional_information,omitempty"`
++	RecommendedAction     string `json:"recommended_action,omitempty"`
++}
++
++// ExosEnclosure EXOS enclosure
++type ExosEnclosure struct {
++	Name        string `json:"name,omitempty"`
++	CtrlAIp     string `json:"ctrl_a_ip,omitempty"`
++	CtrlBIp     string `json:"ctrl_b_ip,omitempty"`
++	Username    string `json:"username,omitempty"`
++	UsernameEnv string `json:"username_env,omitempty"`
++	Password    string `json:"password,omitempty"`
++	PasswordEnv string `json:"password_env,omitempty"`
++}
++
++// ExosEnclosureHealth EXOS enclosure name, controller IPs and health status
++type ExosEnclosureHealth struct {
++	Name         string `json:"name,omitempty"`
++	CtrlAIp      string `json:"ctrl_a_ip,omitempty"`
++	CtrlBIp      string `json:"ctrl_b_ip,omitempty"`
++	Health       string `json:"health,omitempty"`
++	HealthReason string `json:"health_reason,omitempty"`
++}
++
++// custom code
++
++type VendorProvider interface {
++	// GetExosDefaults lists default settings for all EXOS enclosures
++	GetExosDefaults(ctx context.Context) (ExosDefaults, error)
++	// ModifyExosDefaults sets or modifies default username / password for EXOS enclosures
++	ModifyExosDefaults(ctx context.Context, defaults ExosDefaultsModify) error
++	// GetExosEnclosures lists EXOS enclosures including controller IP and health status
++	GetExosEnclosures(ctx context.Context, noCache bool) ([]ExosEnclosure, error)
++	// CreateExosEnclosure creates a new enclosure unless it already exists
++	CreateExosEnclosure(ctx context.Context, enclosure ExosEnclosure) error
++	// ModifyExosEnclosure modifies an existing enclosure
++	ModifyExosEnclosure(ctx context.Context, name string, enclosure ExosEnclosure) error
++	// DeleteExosEnclosure deletes an existing enclosure
++	DeleteExosEnclosure(ctx context.Context, name string) error
++	// GetExosEvents lists the most current "count" events
++	GetExosEvents(ctx context.Context, name string, count int32) ([]ExosEnclosureEvent, error)
++	// GetExosConnectionMap lists the connection-mesh of EXOS Ports to LINSTOR Nodes
++	GetExosConnectionMap(ctx context.Context) (ExosConnectionMap, error)
++}
++
++type VendorService struct {
++	client *Client
++}
++
++// GetExosDefaults lists default settings for all EXOS enclosures
++func (s *VendorService) GetExosDefaults(ctx context.Context) (ExosDefaults, error) {
++	var defaults ExosDefaults
++	_, err := s.client.doGET(ctx, "/v1/vendor/seagate/exos/defaults", &defaults)
++	return defaults, err
++}
++
++// ModifyExosDefaults sets or modifies default username / password for EXOS enclosures
++func (s *VendorService) ModifyExosDefaults(ctx context.Context, defaults ExosDefaultsModify) error {
++	_, err := s.client.doPUT(ctx, "/v1/vendor/seagate/exos/defaults", defaults)
++	return err
++}
++
++// GetExosEnclosures lists EXOS enclosures including controller IP and health status
++func (s *VendorService) GetExosEnclosures(ctx context.Context, noCache bool) ([]ExosEnclosure, error) {
++	var enclosures []ExosEnclosure
++	_, err := s.client.doGET(ctx, fmt.Sprintf("/v1/vendor/seagate/exos/enclosures?nocache=%t", noCache), &enclosures)
++	return enclosures, err
++}
++
++// CreateExosEnclosure creates a new enclosure unless it already exists
++func (s *VendorService) CreateExosEnclosure(ctx context.Context, enclosure ExosEnclosure) error {
++	_, err := s.client.doPOST(ctx, "/v1/vendor/seagate/exos/enclosures", enclosure)
++	return err
++}
++
++// ModifyExosEnclosure modifies an existing enclosure
++func (s *VendorService) ModifyExosEnclosure(ctx context.Context, name string, enclosure ExosEnclosure) error {
++	_, err := s.client.doPUT(ctx, "/v1/vendor/seagate/exos/enclosures/"+name, enclosure)
++	return err
++}
++
++// DeleteExosEnclosure deletes an existing enclosure
++func (s *VendorService) DeleteExosEnclosure(ctx context.Context, name string) error {
++	_, err := s.client.doDELETE(ctx, "/v1/vendor/seagate/exos/enclosures/"+name, nil)
++	return err
++}
++
++// GetExosEvents lists the most current "count" events
++func (s *VendorService) GetExosEvents(ctx context.Context, name string, count int32) ([]ExosEnclosureEvent, error) {
++	var events []ExosEnclosureEvent
++	_, err := s.client.doGET(ctx, "/v1/vendor/seagate/exos/enclosures/"+name+"/events", &events)
++	return events, err
++}
++
++// GetExosConnectionMap lists the connection-mesh of EXOS Ports to LINSTOR Nodes
++func (s *VendorService) GetExosConnectionMap(ctx context.Context) (ExosConnectionMap, error) {
++	var connMap ExosConnectionMap
++	_, err := s.client.doGET(ctx, "/v1/vendor/seagate/exos/map", &connMap)
++	return connMap, err
++}
+diff --git a/vendor/github.com/LINBIT/golinstor/clonestatus/clonestatus.go b/vendor/github.com/LINBIT/golinstor/clonestatus/clonestatus.go
+new file mode 100644
+index 0000000000..8f5ce4fe38
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/clonestatus/clonestatus.go
+@@ -0,0 +1,9 @@
++package clonestatus
++
++type CloneStatus string
++
++const (
++	Failed   CloneStatus = "FAILED"
++	Cloning  CloneStatus = "CLONING"
++	Complete CloneStatus = "COMPLETE"
++)
+diff --git a/vendor/github.com/LINBIT/golinstor/connectionstatus/connectionstatus.go b/vendor/github.com/LINBIT/golinstor/connectionstatus/connectionstatus.go
+new file mode 100644
+index 0000000000..4993f96cd1
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/connectionstatus/connectionstatus.go
+@@ -0,0 +1,17 @@
++package connectionstatus
++
++type ConnectionStatus int
++
++const (
++	Offline             ConnectionStatus = 0
++	Connected           ConnectionStatus = 1
++	Online              ConnectionStatus = 2
++	VersionMismatch     ConnectionStatus = 3
++	FullSyncFailed      ConnectionStatus = 4
++	AuthenticationError ConnectionStatus = 5
++	Unknown             ConnectionStatus = 6
++	HostnameMismatch    ConnectionStatus = 7
++	OtherController     ConnectionStatus = 8
++	Authenticated       ConnectionStatus = 9
++	NoStltConn          ConnectionStatus = 10
++)
+diff --git a/vendor/github.com/LINBIT/golinstor/devicelayerkind/devicelayerkind.go b/vendor/github.com/LINBIT/golinstor/devicelayerkind/devicelayerkind.go
+new file mode 100644
+index 0000000000..d8eb0cc9a2
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/devicelayerkind/devicelayerkind.go
+@@ -0,0 +1,15 @@
++package devicelayerkind
++
++type DeviceLayerKind string
++
++const (
++	Drbd       DeviceLayerKind = "DRBD"
++	Luks       DeviceLayerKind = "LUKS"
++	Storage    DeviceLayerKind = "STORAGE"
++	Nvme       DeviceLayerKind = "NVME"
++	Openflex   DeviceLayerKind = "OPENFLEX"
++	Exos       DeviceLayerKind = "EXOS"
++	Writecache DeviceLayerKind = "WRITECACHE"
++	Cache      DeviceLayerKind = "CACHE"
++	BCache     DeviceLayerKind = "BCACHE"
++)
+diff --git a/vendor/github.com/LINBIT/golinstor/go.mod b/vendor/github.com/LINBIT/golinstor/go.mod
+index 7cec7d3e8d..cce33df3ca 100644
+--- a/vendor/github.com/LINBIT/golinstor/go.mod
++++ b/vendor/github.com/LINBIT/golinstor/go.mod
+@@ -1,9 +1,10 @@
+ module github.com/LINBIT/golinstor
+ 
+-go 1.12
++go 1.13
+ 
+ require (
+ 	github.com/BurntSushi/toml v0.3.1
++	github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b
+ 	github.com/google/go-querystring v1.0.0
+ 	github.com/google/uuid v1.1.1 // indirect
+ 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+@@ -13,8 +14,8 @@ require (
+ 	github.com/onsi/gomega v1.5.0
+ 	github.com/satori/go.uuid v1.2.0
+ 	github.com/sirupsen/logrus v1.3.0
+-	github.com/stretchr/testify v1.3.0 // indirect
+-	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25 // indirect
++	github.com/smartystreets/goconvey v1.7.2 // indirect
++	github.com/stretchr/testify v1.3.0
+ 	golang.org/x/sys v0.0.0-20190228124157-a34e9553db1e // indirect
+ 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+ )
+diff --git a/vendor/github.com/LINBIT/golinstor/go.sum b/vendor/github.com/LINBIT/golinstor/go.sum
+index 37ba0a87cb..08ec73e7db 100644
+--- a/vendor/github.com/LINBIT/golinstor/go.sum
++++ b/vendor/github.com/LINBIT/golinstor/go.sum
+@@ -3,6 +3,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
+ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
++github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b h1:eR1P/A4QMYF2/LpHRhYAts9wyYEtF7qNk/tVNiYCWc8=
++github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b/go.mod h1:56wL82FO0bfMU5RvfXoIwSOP2ggqqxT+tAfNEIyxuHw=
+ github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
+ github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
+ github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM=
+@@ -11,8 +13,12 @@ github.com/google/go-querystring v1.0.0 h1:Xkwi/a1rcvNg1PPYe5vI8GbeBY/jrVuDX5ASu
+ github.com/google/go-querystring v1.0.0/go.mod h1:odCYkC5MyYFN7vkCjXpyrEuKhc/BUO6wN/zVPAxq5ck=
+ github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
+ github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
++github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 h1:EGx4pi6eqNxGaHF6qqu48+N2wcFQ5qg5FXgOdqsJ5d8=
++github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
+ github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
+ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
++github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
++github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
+ github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
+ github.com/konsorten/go-windows-terminal-sequences v1.0.2 h1:DB17ag19krx9CFsz4o3enTrPXyIXCl+2iCXH/aMAp9s=
+ github.com/konsorten/go-windows-terminal-sequences v1.0.2/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
+@@ -31,20 +37,23 @@ github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
+ github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
+ github.com/sirupsen/logrus v1.3.0 h1:hI/7Q+DtNZ2kINb6qt/lS+IyXnHQe9e90POfeewL/ME=
+ github.com/sirupsen/logrus v1.3.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
++github.com/smartystreets/assertions v1.2.0 h1:42S6lae5dvLc7BrLu/0ugRtcFVjoJNMC/N3yZFZkDFs=
++github.com/smartystreets/assertions v1.2.0/go.mod h1:tcbTF8ujkAEcZ8TElKY+i30BzYlVhC/LOxJk7iOWnoo=
++github.com/smartystreets/goconvey v1.7.2 h1:9RBaZCeXEQ3UselpuwUQHltGVXvdwm6cv1hgR6gDIPg=
++github.com/smartystreets/goconvey v1.7.2/go.mod h1:Vw0tHAZW6lzCRk3xgdin6fKYcG+G3Pg9vgXWeJpQFMM=
+ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
+ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
+ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+-golang.org/x/crypto v0.0.0-20180904163835-0709b304e793 h1:u+LnwYTOOW7Ukr/fppxEb1Nwz0AtPflrblfvUudpo+I=
+ golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+-golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25 h1:jsG6UpNLt9iAsb0S2AGW28DveNzzgmbXR+ENoPjUeIU=
+-golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+-golang.org/x/net v0.0.0-20180906233101-161cd47e91fd h1:nTDtHvHSdCn1m6ITfMRqtOd/9+7a3s8RBNOZ3eYZzJA=
++golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=
++golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+ golang.org/x/net v0.0.0-20180906233101-161cd47e91fd/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
++golang.org/x/net v0.0.0-20190311183353-d8887717615a h1:oWX7TPOiFAMXLq8o0ikBYfCJVlRHBcsciT5bXOrH628=
++golang.org/x/net v0.0.0-20190311183353-d8887717615a/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
+ golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f h1:wMNYb4v58l5UBM7MYRLPG6ZhfOqbKu7X5eyFl8ZhKvA=
+ golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+-golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33 h1:I6FyU15t786LL7oL/hn43zqTuEGr4PN7F4XJ1p4E3Y8=
+ golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+ golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+ golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+@@ -54,6 +63,7 @@ golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=
+ golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+ golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 h1:SvFZT6jyqRaOeXpc5h/JSfZenJ2O330aBsf7JfSUXmQ=
+ golang.org/x/time v0.0.0-20190308202827-9d24e82272b4/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
++golang.org/x/tools v0.0.0-20190328211700-ab21143f2384/go.mod h1:LCzVGOaR6xXOjkQ3onu1FJEFr0SW1gC7cKk1uF8kGRs=
+ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
+ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+ gopkg.in/fsnotify.v1 v1.4.7 h1:xOHLXZwVvI9hhs+cLKq5+I5onOuwQLhQwiu63xxlHs4=
+diff --git a/vendor/github.com/LINBIT/golinstor/linstor.go b/vendor/github.com/LINBIT/golinstor/linstor.go
+index 819c39ac45..7cd7794cb6 100644
+--- a/vendor/github.com/LINBIT/golinstor/linstor.go
++++ b/vendor/github.com/LINBIT/golinstor/linstor.go
+@@ -16,7 +16,7 @@
+ 
+ package linstor
+ 
+-//go:generate ./linstor-common/genconsts.py golang apiconsts.go
++//go:generate ./linstor-common/genconsts.py golang .
+ 
+ import (
+ 	"encoding/json"
+@@ -32,6 +32,8 @@ import (
+ 
+ 	uuid "github.com/satori/go.uuid"
+ 	log "github.com/sirupsen/logrus"
++
++	"github.com/LINBIT/golinstor/connectionstatus"
+ )
+ 
+ // ResourceDeployment contains all the information needed to query and assign/deploy
+@@ -274,8 +276,8 @@ type ResDef struct {
+ 
+ type nodeInfo []struct {
+ 	Nodes []struct {
+-		ConnectionStatus int    `json:"connection_status"`
+-		UUID             string `json:"uuid"`
++		ConnectionStatus connectionstatus.ConnectionStatus `json:"connection_status"`
++		UUID             string                            `json:"uuid"`
+ 		NetInterfaces    []struct {
+ 			StltPort           int    `json:"stlt_port"`
+ 			StltEncryptionType string `json:"stlt_encryption_type"`
+diff --git a/vendor/github.com/LINBIT/golinstor/snapshotshipstatus/snapshotshipstatus.go b/vendor/github.com/LINBIT/golinstor/snapshotshipstatus/snapshotshipstatus.go
+new file mode 100644
+index 0000000000..fa9ac43570
+--- /dev/null
++++ b/vendor/github.com/LINBIT/golinstor/snapshotshipstatus/snapshotshipstatus.go
+@@ -0,0 +1,8 @@
++package snapshotshipstatus
++
++type SnapshotShipStatus string
++
++const (
++	Running  SnapshotShipStatus = "Running"
++	Complete SnapshotShipStatus = "Complete"
++)
+diff --git a/vendor/github.com/donovanhide/eventsource/README.md b/vendor/github.com/donovanhide/eventsource/README.md
+new file mode 100644
+index 0000000000..783cc29edc
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/README.md
+@@ -0,0 +1,19 @@
++[![GoDoc](https://godoc.org/github.com/donovanhide/eventsource?status.svg)](http://godoc.org/github.com/donovanhide/eventsource)
++[![CircleCI](https://circleci.com/gh/donovanhide/eventsource.svg?style=svg)](https://circleci.com/gh/donovanhide/eventsource)
++
++
++# Eventsource
++
++Eventsource implements a  [Go](http://golang.org/) implementation of  client and server to allow streaming data one-way over a HTTP connection using the Server-Sent Events API http://dev.w3.org/html5/eventsource/
++
++## Installation
++
++    go get github.com/donovanhide/eventsource
++
++## Documentation
++
++* [Reference](http://godoc.org/github.com/donovanhide/eventsource)
++
++## License
++
++Eventsource is available under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
+diff --git a/vendor/github.com/donovanhide/eventsource/decoder.go b/vendor/github.com/donovanhide/eventsource/decoder.go
+new file mode 100644
+index 0000000000..df339b25e6
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/decoder.go
+@@ -0,0 +1,83 @@
++package eventsource
++
++import (
++	"bufio"
++	"io"
++	"strconv"
++	"strings"
++)
++
++type publication struct {
++	id, event, data string
++	retry           int64
++}
++
++func (s *publication) Id() string    { return s.id }
++func (s *publication) Event() string { return s.event }
++func (s *publication) Data() string  { return s.data }
++func (s *publication) Retry() int64  { return s.retry }
++
++// A Decoder is capable of reading Events from a stream.
++type Decoder struct {
++	*bufio.Reader
++}
++
++// NewDecoder returns a new Decoder instance that reads events
++// with the given io.Reader.
++func NewDecoder(r io.Reader) *Decoder {
++	dec := &Decoder{bufio.NewReader(newNormaliser(r))}
++	return dec
++}
++
++// Decode reads the next Event from a stream (and will block until one
++// comes in).
++// Graceful disconnects (between events) are indicated by an io.EOF error.
++// Any error occuring mid-event is considered non-graceful and will
++// show up as some other error (most likely io.ErrUnexpectedEOF).
++func (dec *Decoder) Decode() (Event, error) {
++	// peek ahead before we start a new event so we can return EOFs
++	_, err := dec.Peek(1)
++	if err == io.ErrUnexpectedEOF {
++		err = io.EOF
++	}
++	if err != nil {
++		return nil, err
++	}
++	pub := new(publication)
++	inDecoding := false
++	for {
++		line, err := dec.ReadString('\n')
++		if err != nil {
++			return nil, err
++		}
++		if line == "\n" && inDecoding {
++			// the empty line signals the end of an event
++			break
++		} else if line == "\n" && !inDecoding {
++			// only a newline was sent, so we don't want to publish an empty event but try to read again
++			continue
++		}
++		line = strings.TrimSuffix(line, "\n")
++		if strings.HasPrefix(line, ":") {
++			continue
++		}
++		sections := strings.SplitN(line, ":", 2)
++		field, value := sections[0], ""
++		if len(sections) == 2 {
++			value = strings.TrimPrefix(sections[1], " ")
++		}
++		inDecoding = true
++		switch field {
++		case "event":
++			pub.event = value
++		case "data":
++			pub.data += value + "\n"
++		case "id":
++			pub.id = value
++		case "retry":
++			pub.retry, _ = strconv.ParseInt(value, 10, 64)
++		}
++	}
++	pub.data = strings.TrimSuffix(pub.data, "\n")
++	return pub, nil
++}
+diff --git a/vendor/github.com/donovanhide/eventsource/encoder.go b/vendor/github.com/donovanhide/eventsource/encoder.go
+new file mode 100644
+index 0000000000..e9c7c3160e
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/encoder.go
+@@ -0,0 +1,58 @@
++package eventsource
++
++import (
++	"compress/gzip"
++	"fmt"
++	"io"
++	"strings"
++)
++
++var (
++	encFields = []struct {
++		prefix string
++		value  func(Event) string
++	}{
++		{"id: ", Event.Id},
++		{"event: ", Event.Event},
++		{"data: ", Event.Data},
++	}
++)
++
++// An Encoder is capable of writing Events to a stream. Optionally
++// Events can be gzip compressed in this process.
++type Encoder struct {
++	w          io.Writer
++	compressed bool
++}
++
++// NewEncoder returns an Encoder for a given io.Writer.
++// When compressed is set to true, a gzip writer will be
++// created.
++func NewEncoder(w io.Writer, compressed bool) *Encoder {
++	if compressed {
++		return &Encoder{w: gzip.NewWriter(w), compressed: true}
++	}
++	return &Encoder{w: w}
++}
++
++// Encode writes an event in the format specified by the
++// server-sent events protocol.
++func (enc *Encoder) Encode(ev Event) error {
++	for _, field := range encFields {
++		prefix, value := field.prefix, field.value(ev)
++		if len(value) == 0 {
++			continue
++		}
++		value = strings.Replace(value, "\n", "\n"+prefix, -1)
++		if _, err := io.WriteString(enc.w, prefix+value+"\n"); err != nil {
++			return fmt.Errorf("eventsource encode: %v", err)
++		}
++	}
++	if _, err := io.WriteString(enc.w, "\n"); err != nil {
++		return fmt.Errorf("eventsource encode: %v", err)
++	}
++	if enc.compressed {
++		return enc.w.(*gzip.Writer).Flush()
++	}
++	return nil
++}
+diff --git a/vendor/github.com/donovanhide/eventsource/interface.go b/vendor/github.com/donovanhide/eventsource/interface.go
+new file mode 100644
+index 0000000000..b8b2cd44b4
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/interface.go
+@@ -0,0 +1,25 @@
++// Package eventsource implements a client and server to allow streaming data one-way over a HTTP connection
++// using the Server-Sent Events API http://dev.w3.org/html5/eventsource/
++//
++// The client and server respect the Last-Event-ID header.
++// If the Repository interface is implemented on the server, events can be replayed in case of a network disconnection.
++package eventsource
++
++// Any event received by the client or sent by the server will implement this interface
++type Event interface {
++	// Id is an identifier that can be used to allow a client to replay
++	// missed Events by returning the Last-Event-Id header.
++	// Return empty string if not required.
++	Id() string
++	// The name of the event. Return empty string if not required.
++	Event() string
++	// The payload of the event.
++	Data() string
++}
++
++// If history is required, this interface will allow clients to reply previous events through the server.
++// Both methods can be called from different goroutines concurrently, so you must make sure they are go-routine safe.
++type Repository interface {
++	// Gets the Events which should follow on from the specified channel and event id.
++	Replay(channel, id string) chan Event
++}
+diff --git a/vendor/github.com/donovanhide/eventsource/normalise.go b/vendor/github.com/donovanhide/eventsource/normalise.go
+new file mode 100644
+index 0000000000..3072ab6924
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/normalise.go
+@@ -0,0 +1,35 @@
++package eventsource
++
++import (
++	"io"
++)
++
++// A reader which normalises line endings
++// "/r" and "/r/n" are converted to "/n"
++type normaliser struct {
++	r        io.Reader
++	lastChar byte
++}
++
++func newNormaliser(r io.Reader) *normaliser {
++	return &normaliser{r: r}
++}
++
++func (norm *normaliser) Read(p []byte) (n int, err error) {
++	n, err = norm.r.Read(p)
++	for i := 0; i < n; i++ {
++		switch {
++		case p[i] == '\n' && norm.lastChar == '\r':
++			copy(p[i:n], p[i+1:])
++			norm.lastChar = p[i]
++			n--
++			i--
++		case p[i] == '\r':
++			norm.lastChar = p[i]
++			p[i] = '\n'
++		default:
++			norm.lastChar = p[i]
++		}
++	}
++	return
++}
+diff --git a/vendor/github.com/donovanhide/eventsource/repository.go b/vendor/github.com/donovanhide/eventsource/repository.go
+new file mode 100644
+index 0000000000..9dd865162e
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/repository.go
+@@ -0,0 +1,50 @@
++package eventsource
++
++import (
++	"sort"
++	"sync"
++)
++
++// Example repository that uses a slice as storage for past events.
++type SliceRepository struct {
++	events map[string][]Event
++	lock   sync.RWMutex
++}
++
++func NewSliceRepository() *SliceRepository {
++	return &SliceRepository{
++		events: make(map[string][]Event),
++	}
++}
++
++func (repo SliceRepository) indexOfEvent(channel, id string) int {
++	return sort.Search(len(repo.events[channel]), func(i int) bool {
++		return repo.events[channel][i].Id() >= id
++	})
++}
++
++func (repo SliceRepository) Replay(channel, id string) (out chan Event) {
++	out = make(chan Event)
++	go func() {
++		defer close(out)
++		repo.lock.RLock()
++		defer repo.lock.RUnlock()
++		events := repo.events[channel][repo.indexOfEvent(channel, id):]
++		for i := range events {
++			out <- events[i]
++		}
++	}()
++	return
++}
++
++func (repo *SliceRepository) Add(channel string, event Event) {
++	repo.lock.Lock()
++	defer repo.lock.Unlock()
++	i := repo.indexOfEvent(channel, event.Id())
++	if i < len(repo.events[channel]) && repo.events[channel][i].Id() == event.Id() {
++		repo.events[channel][i] = event
++	} else {
++		repo.events[channel] = append(repo.events[channel][:i], append([]Event{event}, repo.events[channel][i:]...)...)
++	}
++	return
++}
+diff --git a/vendor/github.com/donovanhide/eventsource/server.go b/vendor/github.com/donovanhide/eventsource/server.go
+new file mode 100644
+index 0000000000..82cee69dd8
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/server.go
+@@ -0,0 +1,189 @@
++package eventsource
++
++import (
++	"log"
++	"net/http"
++	"strings"
++	"sync"
++)
++
++type subscription struct {
++	channel     string
++	lastEventId string
++	out         chan Event
++}
++
++type outbound struct {
++	channels []string
++	event    Event
++}
++type registration struct {
++	channel    string
++	repository Repository
++}
++
++type Server struct {
++	AllowCORS     bool        // Enable all handlers to be accessible from any origin
++	ReplayAll     bool        // Replay repository even if there's no Last-Event-Id specified
++	BufferSize    int         // How many messages do we let the client get behind before disconnecting
++	Gzip          bool        // Enable compression if client can accept it
++	Logger        *log.Logger // Logger is a logger that, when set, will be used for logging debug messages
++	registrations chan *registration
++	pub           chan *outbound
++	subs          chan *subscription
++	unregister    chan *subscription
++	quit          chan bool
++	isClosed      bool
++	isClosedMutex sync.RWMutex
++}
++
++// Create a new Server ready for handler creation and publishing events
++func NewServer() *Server {
++	srv := &Server{
++		registrations: make(chan *registration),
++		pub:           make(chan *outbound),
++		subs:          make(chan *subscription),
++		unregister:    make(chan *subscription, 2),
++		quit:          make(chan bool),
++		BufferSize:    128,
++	}
++	go srv.run()
++	return srv
++}
++
++// Stop handling publishing
++func (srv *Server) Close() {
++	srv.quit <- true
++	srv.markServerClosed()
++}
++
++// Create a new handler for serving a specified channel
++func (srv *Server) Handler(channel string) http.HandlerFunc {
++	return func(w http.ResponseWriter, req *http.Request) {
++		h := w.Header()
++		h.Set("Content-Type", "text/event-stream; charset=utf-8")
++		h.Set("Cache-Control", "no-cache, no-store, must-revalidate")
++		h.Set("Connection", "keep-alive")
++		if srv.AllowCORS {
++			h.Set("Access-Control-Allow-Origin", "*")
++		}
++		useGzip := srv.Gzip && strings.Contains(req.Header.Get("Accept-Encoding"), "gzip")
++		if useGzip {
++			h.Set("Content-Encoding", "gzip")
++		}
++		w.WriteHeader(http.StatusOK)
++
++		// If the Handler is still active even though the server is closed, stop here.
++		// Otherwise the Handler will block while publishing to srv.subs indefinitely.
++		if srv.isServerClosed() {
++			return
++		}
++
++		sub := &subscription{
++			channel:     channel,
++			lastEventId: req.Header.Get("Last-Event-ID"),
++			out:         make(chan Event, srv.BufferSize),
++		}
++		srv.subs <- sub
++		flusher := w.(http.Flusher)
++		notifier := w.(http.CloseNotifier)
++		flusher.Flush()
++		enc := NewEncoder(w, useGzip)
++		for {
++			select {
++			case <-notifier.CloseNotify():
++				srv.unregister <- sub
++				return
++			case ev, ok := <-sub.out:
++				if !ok {
++					return
++				}
++				if err := enc.Encode(ev); err != nil {
++					srv.unregister <- sub
++					if srv.Logger != nil {
++						srv.Logger.Println(err)
++					}
++					return
++				}
++				flusher.Flush()
++			}
++		}
++	}
++}
++
++// Register the repository to be used for the specified channel
++func (srv *Server) Register(channel string, repo Repository) {
++	srv.registrations <- &registration{
++		channel:    channel,
++		repository: repo,
++	}
++}
++
++// Publish an event with the specified id to one or more channels
++func (srv *Server) Publish(channels []string, ev Event) {
++	srv.pub <- &outbound{
++		channels: channels,
++		event:    ev,
++	}
++}
++
++func replay(repo Repository, sub *subscription) {
++	for ev := range repo.Replay(sub.channel, sub.lastEventId) {
++		sub.out <- ev
++	}
++}
++
++func (srv *Server) run() {
++	subs := make(map[string]map[*subscription]struct{})
++	repos := make(map[string]Repository)
++	for {
++		select {
++		case reg := <-srv.registrations:
++			repos[reg.channel] = reg.repository
++		case sub := <-srv.unregister:
++			delete(subs[sub.channel], sub)
++		case pub := <-srv.pub:
++			for _, c := range pub.channels {
++				for s := range subs[c] {
++					select {
++					case s.out <- pub.event:
++					default:
++						srv.unregister <- s
++						close(s.out)
++					}
++
++				}
++			}
++		case sub := <-srv.subs:
++			if _, ok := subs[sub.channel]; !ok {
++				subs[sub.channel] = make(map[*subscription]struct{})
++			}
++			subs[sub.channel][sub] = struct{}{}
++			if srv.ReplayAll || len(sub.lastEventId) > 0 {
++				repo, ok := repos[sub.channel]
++				if ok {
++					go replay(repo, sub)
++				}
++			}
++		case <-srv.quit:
++			for _, sub := range subs {
++				for s := range sub {
++					close(s.out)
++				}
++			}
++			return
++		}
++	}
++}
++
++func (srv *Server) isServerClosed() bool {
++	srv.isClosedMutex.RLock()
++	defer srv.isClosedMutex.RUnlock()
++	return srv.isClosed
++}
++
++func (srv *Server) markServerClosed() {
++	srv.isClosedMutex.Lock()
++	defer srv.isClosedMutex.Unlock()
++	srv.isClosed = true
++}
+diff --git a/vendor/github.com/donovanhide/eventsource/stream.go b/vendor/github.com/donovanhide/eventsource/stream.go
+new file mode 100644
+index 0000000000..5970877016
+--- /dev/null
++++ b/vendor/github.com/donovanhide/eventsource/stream.go
+@@ -0,0 +1,196 @@
++package eventsource
++
++import (
++	"errors"
++	"fmt"
++	"io"
++	"io/ioutil"
++	"log"
++	"net/http"
++	"sync"
++	"time"
++)
++
++// Stream handles a connection for receiving Server Sent Events.
++// It will try and reconnect if the connection is lost, respecting both
++// received retry delays and event id's.
++type Stream struct {
++	c           *http.Client
++	req         *http.Request
++	lastEventId string
++	retry       time.Duration
++	// Events emits the events received by the stream
++	Events chan Event
++	// Errors emits any errors encountered while reading events from the stream.
++	// It's mainly for informative purposes - the client isn't required to take any
++	// action when an error is encountered. The stream will always attempt to continue,
++	// even if that involves reconnecting to the server.
++	Errors chan error
++	// Logger is a logger that, when set, will be used for logging debug messages
++	Logger *log.Logger
++	// isClosed is a marker that the stream is/should be closed
++	isClosed bool
++	// isClosedMutex is a mutex protecting concurrent read/write access of isClosed
++	isClosedMutex sync.RWMutex
++}
++
++type SubscriptionError struct {
++	Code    int
++	Message string
++}
++
++func (e SubscriptionError) Error() string {
++	return fmt.Sprintf("%d: %s", e.Code, e.Message)
++}
++
++// Subscribe to the Events emitted from the specified url.
++// If lastEventId is non-empty it will be sent to the server in case it can replay missed events.
++func Subscribe(url, lastEventId string) (*Stream, error) {
++	req, err := http.NewRequest("GET", url, nil)
++	if err != nil {
++		return nil, err
++	}
++	return SubscribeWithRequest(lastEventId, req)
++}
++
++// SubscribeWithRequest will take an http.Request to setup the stream, allowing custom headers
++// to be specified, authentication to be configured, etc.
++func SubscribeWithRequest(lastEventId string, request *http.Request) (*Stream, error) {
++	return SubscribeWith(lastEventId, http.DefaultClient, request)
++}
++
++// SubscribeWith takes a http client and request providing customization over both headers and
++// control over the http client settings (timeouts, tls, etc)
++func SubscribeWith(lastEventId string, client *http.Client, request *http.Request) (*Stream, error) {
++	stream := &Stream{
++		c:           client,
++		req:         request,
++		lastEventId: lastEventId,
++		retry:       time.Millisecond * 3000,
++		Events:      make(chan Event),
++		Errors:      make(chan error),
++	}
++	stream.c.CheckRedirect = checkRedirect
++
++	r, err := stream.connect()
++	if err != nil {
++		return nil, err
++	}
++	go stream.stream(r)
++	return stream, nil
++}
++
++// Close will close the stream. It is safe for concurrent access and can be called multiple times.
++func (stream *Stream) Close() {
++	if stream.isStreamClosed() {
++		return
++	}
++
++	stream.markStreamClosed()
++	close(stream.Errors)
++	close(stream.Events)
++}
++
++func (stream *Stream) isStreamClosed() bool {
++	stream.isClosedMutex.RLock()
++	defer stream.isClosedMutex.RUnlock()
++	return stream.isClosed
++}
++
++func (stream *Stream) markStreamClosed() {
++	stream.isClosedMutex.Lock()
++	defer stream.isClosedMutex.Unlock()
++	stream.isClosed = true
++}
++
++// Go's http package doesn't copy headers across when it encounters
++// redirects so we need to do that manually.
++func checkRedirect(req *http.Request, via []*http.Request) error {
++	if len(via) >= 10 {
++		return errors.New("stopped after 10 redirects")
++	}
++	for k, vv := range via[0].Header {
++		for _, v := range vv {
++			req.Header.Add(k, v)
++		}
++	}
++	return nil
++}
++
++func (stream *Stream) connect() (r io.ReadCloser, err error) {
++	var resp *http.Response
++	stream.req.Header.Set("Cache-Control", "no-cache")
++	stream.req.Header.Set("Accept", "text/event-stream")
++	if len(stream.lastEventId) > 0 {
++		stream.req.Header.Set("Last-Event-ID", stream.lastEventId)
++	}
++	if resp, err = stream.c.Do(stream.req); err != nil {
++		return
++	}
++	if resp.StatusCode != 200 {
++		message, _ := ioutil.ReadAll(resp.Body)
++		err = SubscriptionError{
++			Code:    resp.StatusCode,
++			Message: string(message),
++		}
++	}
++	r = resp.Body
++	return
++}
++
++func (stream *Stream) stream(r io.ReadCloser) {
++	defer r.Close()
++
++	// receives events until an error is encountered
++	stream.receiveEvents(r)
++
++	// tries to reconnect and start the stream again
++	stream.retryRestartStream()
++}
++
++func (stream *Stream) receiveEvents(r io.ReadCloser) {
++	dec := NewDecoder(r)
++
++	for {
++		ev, err := dec.Decode()
++		if stream.isStreamClosed() {
++			return
++		}
++		if err != nil {
++			stream.Errors <- err
++			return
++		}
++
++		pub := ev.(*publication)
++		if pub.Retry() > 0 {
++			stream.retry = time.Duration(pub.Retry()) * time.Millisecond
++		}
++		if len(pub.Id()) > 0 {
++			stream.lastEventId = pub.Id()
++		}
++		stream.Events <- ev
++	}
++}
++
++func (stream *Stream) retryRestartStream() {
++	backoff := stream.retry
++	for {
++		if stream.Logger != nil {
++			stream.Logger.Printf("Reconnecting in %0.4f secs\n", backoff.Seconds())
++		}
++		time.Sleep(backoff)
++		if stream.isStreamClosed() {
++			return
++		}
++		// NOTE: because of the defer we're opening the new connection
++		// before closing the old one. Shouldn't be a problem in practice,
++		// but something to be aware of.
++		r, err := stream.connect()
++		if err == nil {
++			go stream.stream(r)
++			return
++		}
++		stream.Errors <- err
++		backoff *= 2
++	}
++}
+diff --git a/vendor/modules.txt b/vendor/modules.txt
+index 9d460fba47..fc7ad8d0ac 100644
+--- a/vendor/modules.txt
++++ b/vendor/modules.txt
+@@ -50,10 +50,14 @@ github.com/Azure/go-autorest/logger
+ github.com/Azure/go-autorest/tracing
+ # github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20200415212048-7901bc822317
+ github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta
+-# github.com/LINBIT/golinstor v0.27.0 => github.com/LINBIT/golinstor v0.26.0
++# github.com/LINBIT/golinstor v0.27.0 => github.com/LINBIT/golinstor v0.39.0
+ ## explicit
+ github.com/LINBIT/golinstor
+ github.com/LINBIT/golinstor/client
++github.com/LINBIT/golinstor/clonestatus
++github.com/LINBIT/golinstor/connectionstatus
++github.com/LINBIT/golinstor/devicelayerkind
++github.com/LINBIT/golinstor/snapshotshipstatus
+ # github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e
+ github.com/MakeNowJust/heredoc
+ # github.com/PuerkitoBio/purell v1.1.1
+@@ -156,6 +160,8 @@ github.com/docker/go-units
+ # github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c
+ github.com/docker/spdystream
+ github.com/docker/spdystream/spdy
++# github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b
++github.com/donovanhide/eventsource
+ # github.com/emicklei/go-restful v2.11.1+incompatible
+ github.com/emicklei/go-restful
+ github.com/emicklei/go-restful/log
+@@ -1396,7 +1402,7 @@ sigs.k8s.io/sig-storage-lib-external-provisioner/v6/util
+ sigs.k8s.io/structured-merge-diff/v4/value
+ # sigs.k8s.io/yaml v1.2.0
+ sigs.k8s.io/yaml
+-# github.com/LINBIT/golinstor => github.com/LINBIT/golinstor v0.26.0
++# github.com/LINBIT/golinstor => github.com/LINBIT/golinstor v0.39.0
+ # github.com/banzaicloud/k8s-objectmatcher => github.com/banzaicloud/k8s-objectmatcher v1.5.1
+ # github.com/census-instrumentation/opencensus-proto => github.com/census-instrumentation/opencensus-proto v0.3.0
+ # github.com/docker/distribution => github.com/docker/distribution v2.7.0+incompatible
