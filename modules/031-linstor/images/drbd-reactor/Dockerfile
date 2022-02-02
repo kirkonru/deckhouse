@@ -1,15 +1,14 @@
 ARG BASE_DEBIAN
 
-FROM $BASE_DEBIAN as builder
-ARG REACTOR_VERSION=0.5.3
+FROM $BASE_DEBIAN as utils-builder
+
 ARG UTILS_VERSION=9.20.2
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
  && apt-get -y upgrade \
- && apt-get -y install build-essential debhelper git cargo rustc dh-python flex clitest xsltproc locales libxml2-utils po4a bash-completion dh-systemd docbook-xsl udev asciidoctor
+ && apt-get -y install build-essential debhelper git flex clitest xsltproc locales libxml2-utils po4a bash-completion dh-systemd docbook-xsl udev asciidoctor
 
-# drbd-utils
 RUN git clone --recurse-submodules https://github.com/LINBIT/drbd-utils /drbd-utils
 WORKDIR /drbd-utils
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
@@ -28,7 +27,17 @@ RUN git checkout v${UTILS_VERSION} \
 WORKDIR /drbd-utils-${UTILS_VERSION}
 RUN dpkg-buildpackage -us -uc
 
-# drbd-reactor
+# ------------------------------------------------------------------------------
+
+FROM $BASE_DEBIAN as reactor-builder
+
+ARG REACTOR_VERSION=0.5.3
+
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update \
+ && apt-get -y upgrade \
+ && apt-get -y install build-essential debhelper git cargo rustc dh-python
+
 RUN git clone --recurse-submodules https://github.com/LINBIT/drbd-reactor /drbd-reactor
 WORKDIR /drbd-reactor
 RUN git checkout v${REACTOR_VERSION} \
@@ -39,11 +48,13 @@ RUN git checkout v${REACTOR_VERSION} \
 WORKDIR /drbd-reactor-${REACTOR_VERSION}
 RUN dpkg-buildpackage -us -uc
 
+# ------------------------------------------------------------------------------
 
 FROM $BASE_DEBIAN
 
-COPY --from=builder /python-linstor_*.deb /drbd-utils_*.deb /thin-send-recv_*.deb /drbd-reactor_*.deb /packages/
-RUN dpkg -i packages/*.deb
+COPY --from=utils-builder /python-linstor_*_all.deb /drbd-utils_*_amd64.deb /thin-send-recv_*_amd64.deb /packages/
+COPY --from=reactor-builder /drbd-reactor_*_amd64.deb /packages/
 
+RUN dpkg -i packages/*.deb
 
 ENTRYPOINT ["/usr/sbin/drbd-reactor"]
