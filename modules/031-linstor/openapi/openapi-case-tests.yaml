@@ -1,0 +1,19 @@
+positive:
+  configValues:
+  - {}
+  values:
+  - { internal: {} }
+  - internal:
+      linstors: []
+  - internal:
+      linstors:
+      - name: linstor
+        spec: {}
+negative:
+  configValues:
+  - {}
+  values:
+  - internal:
+      linstors:
+      - name: linstor2
+        spec: {}
