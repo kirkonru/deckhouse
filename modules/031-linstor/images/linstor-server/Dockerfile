@@ -1,4 +1,5 @@
 ARG BASE_DEBIAN
+ARG BASE_GOLANG_17_BUSTER
 
 FROM $BASE_DEBIAN as linstor-builder
 
@@ -6,8 +7,9 @@ ARG LINSTOR_VERSION=1.17.0
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
- && apt-get -y upgrade \
- && apt-get -y install build-essential git default-jdk-headless dh-systemd gradle python3-all
+ && apt-get -y install build-essential git default-jdk-headless dh-systemd gradle python3-all \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/LINBIT/linstor-server.git /linstor-server
 WORKDIR /linstor-server
@@ -31,7 +33,9 @@ ARG CLIENT_VERSION=1.12.0
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
  && apt-get -y upgrade \
- && apt-get -y install build-essential debhelper git python3-all python3-setuptools help2man bash-completion docbook-xsl xsltproc
+ && apt-get -y install build-essential debhelper git python3-all python3-setuptools help2man bash-completion docbook-xsl xsltproc \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --recurse-submodules https://github.com/LINBIT/linstor-api-py /linstor-api-py
 WORKDIR /linstor-api-py
@@ -58,7 +62,7 @@ RUN dpkg-buildpackage -us -uc
 
 FROM $BASE_GOLANG_17_BUSTER as k8s-await-election-builder
 
-ARG K8S_AWAIT_ELECTION_VERSION=1.12.0
+ARG K8S_AWAIT_ELECTION_VERSION=0.3.1
 
 RUN git clone https://github.com/LINBIT/k8s-await-election/ /usr/local/go/k8s-await-election/ \
  && cd /usr/local/go/k8s-await-election \
@@ -74,8 +78,9 @@ ARG UTILS_VERSION=9.18.2
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
- && apt-get -y upgrade \
- && apt-get -y install build-essential debhelper git flex clitest xsltproc locales libxml2-utils po4a bash-completion dh-systemd docbook-xsl udev asciidoctor
+ && apt-get -y install build-essential debhelper git flex clitest xsltproc locales libxml2-utils po4a bash-completion dh-systemd docbook-xsl udev asciidoctor \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --recurse-submodules https://github.com/LINBIT/drbd-utils /drbd-utils
 WORKDIR /drbd-utils
@@ -110,9 +115,9 @@ RUN dpkg-buildpackage -us -uc
 
 FROM $BASE_DEBIAN
 
-COPY --from=linstor-builder /linstor-common_*_all.deb /linstor-controller_*_all.deb /linstor-satellite_*_all.deb /packages/
-COPY --from=client-builder /python-linstor_*_all.deb /linstor-client_*_all.deb /packages/
-COPY --from=utils-builder /python-linstor_*_all.deb /drbd-utils_*_amd64.deb /thin-send-recv_*_amd64.deb /packages/
+COPY --from=linstor-builder /linstor-common_*.deb /linstor-controller_*.deb /linstor-satellite_*.deb /packages/
+COPY --from=client-builder /python-linstor_*.deb /linstor-client_*.deb /packages/
+COPY --from=utils-builder /python-linstor_*.deb /drbd-utils_*.deb /thin-send-recv_*.deb /packages/
 COPY --from=k8s-await-election-builder /k8s-await-election /k8s-await-election
 
 # Source: https://github.com/piraeusdatastore/piraeus/tree/master/dockerfiles/piraeus-server
@@ -149,14 +154,6 @@ RUN apt-get install -y gnupg2 && \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-# Log directory need to be group writable. OpenShift assigns random UID and GID, without extra RBAC changes we can only influence the GID.
-RUN mkdir /var/log/linstor-controller && \
-	 chown 0:1000 /var/log/linstor-controller && \
-	 chmod -R 0775 /var/log/linstor-controller && \
-	 # Ensure we log to files in containers, otherwise SOS reports won't show any logs at all
-	 sed -i 's#<!-- <appender-ref ref="FILE" /> -->#<appender-ref ref="FILE" />#' /usr/share/linstor-server/lib/conf/logback.xml
-
-# satellite
 # needs a newer lvm, debian bug #932433
 COPY preferences /etc/apt/preferences
 RUN echo 'deb http://deb.debian.org/debian/ bullseye main contrib' >> /etc/apt/sources.list && \
@@ -170,6 +167,13 @@ RUN apt-get update \
  && dpkg -i packages/*.deb \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
+
+# Log directory need to be group writable. OpenShift assigns random UID and GID, without extra RBAC changes we can only influence the GID.
+RUN mkdir /var/log/linstor-controller && \
+	 chown 0:1000 /var/log/linstor-controller && \
+	 chmod -R 0775 /var/log/linstor-controller && \
+	 # Ensure we log to files in containers, otherwise SOS reports won't show any logs at all
+	 sed -i 's#<!-- <appender-ref ref="FILE" /> -->#<appender-ref ref="FILE" />#' /usr/share/linstor-server/lib/conf/logback.xml
 
 # controller
 EXPOSE 3376/tcp 3377/tcp 3370/tcp 3371/tcp
