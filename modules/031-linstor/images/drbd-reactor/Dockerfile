@@ -52,8 +52,8 @@ RUN dpkg-buildpackage -us -uc
 
 FROM $BASE_DEBIAN
 
-COPY --from=utils-builder /python-linstor_*_all.deb /drbd-utils_*_amd64.deb /thin-send-recv_*_amd64.deb /packages/
-COPY --from=reactor-builder /drbd-reactor_*_amd64.deb /packages/
+COPY --from=utils-builder /python-linstor_*.deb /drbd-utils_*.deb /thin-send-recv_*.deb /packages/
+COPY --from=reactor-builder /drbd-reactor_*.deb /packages/
 
 RUN dpkg -i packages/*.deb
 
