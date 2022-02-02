@@ -6,8 +6,9 @@ ARG UTILS_VERSION=9.20.2
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
- && apt-get -y upgrade \
- && apt-get -y install build-essential debhelper git flex clitest xsltproc locales libxml2-utils po4a bash-completion dh-systemd docbook-xsl udev asciidoctor
+ && apt-get -y install build-essential debhelper git flex clitest xsltproc locales libxml2-utils po4a bash-completion dh-systemd docbook-xsl udev asciidoctor \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --recurse-submodules https://github.com/LINBIT/drbd-utils /drbd-utils
 WORKDIR /drbd-utils
@@ -35,8 +36,9 @@ ARG REACTOR_VERSION=0.5.3
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
- && apt-get -y upgrade \
- && apt-get -y install build-essential debhelper git cargo rustc dh-python
+ && apt-get -y install build-essential debhelper git cargo rustc dh-python \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --recurse-submodules https://github.com/LINBIT/drbd-reactor /drbd-reactor
 WORKDIR /drbd-reactor
@@ -51,6 +53,12 @@ RUN dpkg-buildpackage -us -uc
 # ------------------------------------------------------------------------------
 
 FROM $BASE_DEBIAN
+
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update \
+ && apt-get -y install python3-toml \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY --from=utils-builder /python-linstor_*.deb /drbd-utils_*.deb /thin-send-recv_*.deb /packages/
 COPY --from=reactor-builder /drbd-reactor_*.deb /packages/

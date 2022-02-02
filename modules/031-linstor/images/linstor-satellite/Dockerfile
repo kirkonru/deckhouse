@@ -96,7 +96,7 @@ RUN apt-get -y update \
 
 # Install linstor-satellite
 RUN apt-get update \
- && apt-get install -y default-jre-headless thin-provisioning-tools python3-toml \
+ && apt-get install -y default-jre-headless thin-provisioning-tools \
  && dpkg -i packages/*.deb \
  && sed -i "s|'$| \"-Djdk.tls.acknowledgeCloseNotify=true\"'|" \
       /usr/share/linstor-server/bin/Satellite \
