@@ -1,8 +1,8 @@
 ARG BASE_DEBIAN
 ARG BASE_GOLANG_17_BUSTER
-ARG LINSTOR_CSI_VERSION=0.17.0
 
 FROM $BASE_GOLANG_17_BUSTER as builder
+ARG LINSTOR_CSI_VERSION=0.17.0
 
 RUN git clone https://github.com/linbit/linstor-csi/ /usr/local/go/linstor-csi/ \
  && cd /usr/local/go/linstor-csi \

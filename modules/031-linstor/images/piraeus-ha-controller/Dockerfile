@@ -1,8 +1,8 @@
 ARG BASE_DEBIAN
 ARG BASE_GOLANG_17_BUSTER
-ARG PIRAEUS_HA_CONTROLLER_VERSION=0.2.0
 
 FROM $BASE_GOLANG_17_BUSTER as builder
+ARG PIRAEUS_HA_CONTROLLER_VERSION=0.2.0
 
 RUN git clone https://github.com/piraeusdatastore/piraeus-ha-controller /usr/local/go/piraeus-ha-controller \
  && cd /usr/local/go/piraeus-ha-controller \

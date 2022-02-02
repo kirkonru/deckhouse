@@ -1,8 +1,8 @@
 ARG BASE_DEBIAN
 ARG BASE_GOLANG_17_BUSTER
-ARG STORK_VERSION=2.8.2
 
 FROM $BASE_GOLANG_17_BUSTER as builder
+ARG STORK_VERSION=2.8.2
 
 RUN git clone https://github.com/libopenstorage/stork /usr/local/go/stork \
  && cd /usr/local/go/stork \

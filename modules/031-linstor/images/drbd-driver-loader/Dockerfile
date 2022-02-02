@@ -1,7 +1,7 @@
 ARG BASE_DEBIAN
-ARG DRBD_VERSION=9.1.5
 
 FROM $BASE_DEBIAN
+ARG DRBD_VERSION=9.1.5
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y kmod gnupg wget make gcc patch curl && apt-get clean
 
