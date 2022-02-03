@@ -1,7 +1,16 @@
 diff --git a/pkg/controller/linstorcontroller/linstorcontroller_controller.go b/pkg/controller/linstorcontroller/linstorcontroller_controller.go
-index 284157f..08ac249 100644
+index 284157f..2340040 100644
 --- a/pkg/controller/linstorcontroller/linstorcontroller_controller.go
 +++ b/pkg/controller/linstorcontroller/linstorcontroller_controller.go
+@@ -710,7 +710,7 @@ func newDeploymentForResource(controllerResource *piraeusv1.LinstorController) *
+ 			VolumeSource: corev1.VolumeSource{
+ 				ConfigMap: &corev1.ConfigMapVolumeSource{
+ 					LocalObjectReference: corev1.LocalObjectReference{
+-						Name: controllerResource.Name + "-config",
++						Name: controllerResource.Name + "-controller-config",
+ 					},
+ 				},
+ 			},
 @@ -990,7 +990,7 @@ func NewConfigMapForResource(controllerResource *piraeusv1.LinstorController) (*
  	}
  
