@@ -1,4 +1,4 @@
-# Source: https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/operator-serviceaccount.yaml
+# Source https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/operator-serviceaccount.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -129,3 +129,80 @@ subjects:
 - kind: ServiceAccount
   name: piraeus-operator
   namespace: d8-{{ .Chart.Name }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: csi-driver-registrar
+  {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
+rules:
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - csidrivers
+    resourceNames:
+      - linstor.csi.linbit.com
+    verbs:
+      - get
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - csidrivers
+    verbs:
+      - create
+      - list
+      - watch
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - csinodes
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-driver-registrar
+  {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: piraeus-operator
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  kind: ClusterRole
+  name: csi-driver-registrar
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linstor-node-syncer
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - watch
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linstor-node-syncer
+subjects:
+  - kind: ServiceAccount
+    name: piraeus-operator
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  kind: ClusterRole
+  name: linstor-node-syncer
+  apiGroup: rbac.authorization.k8s.io
