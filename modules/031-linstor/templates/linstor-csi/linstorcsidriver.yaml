@@ -21,7 +21,7 @@ spec:
   #linstorHttpsClientSecret: linstor-client-secret
   priorityClassName: ""
   controllerReplicas: 1
-  controllerEndpoint: https://linstor-controller.d8-{{ .Chart.Name }}.svc:3371
+  controllerEndpoint: https://linstor.d8-{{ .Chart.Name }}.svc:3371
   nodeAffinity: {}
   nodeTolerations: []
   controllerAffinity: {}

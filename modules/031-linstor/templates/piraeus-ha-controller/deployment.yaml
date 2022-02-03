@@ -68,9 +68,9 @@ spec:
             - --v=5
           env:
             - name: LS_CONTROLLERS
-              value: http://linstor-controller.d8-{{ .Chart.Name }}.svc:3370
+              value: http://linstor.d8-{{ .Chart.Name }}.svc:3370
             #- name: LS_CONTROLLERS
-            #  value: https://linstor-controller.d8-{{ .Chart.Name }}.svc:3371
+            #  value: https://linstor.d8-{{ .Chart.Name }}.svc:3371
             #- name: LS_USER_CERTIFICATE
             #  valueFrom:
             #    secretKeyRef:

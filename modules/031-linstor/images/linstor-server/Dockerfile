@@ -32,7 +32,6 @@ ARG CLIENT_VERSION=1.12.0
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
- && apt-get -y upgrade \
  && apt-get -y install build-essential debhelper git python3-all python3-setuptools help2man bash-completion docbook-xsl xsltproc \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
@@ -161,7 +160,7 @@ RUN echo 'deb http://deb.debian.org/debian/ bullseye main contrib' >> /etc/apt/s
 RUN sed -i 's/udev_rules.*=.*/udev_rules=0/ ; s/udev_sync.*=.*/udev_sync=0/ ; s/obtain_device_list_from_udev.*=.*/obtain_device_list_from_udev=0/' /etc/lvm/lvm.conf
 RUN sed -i '/^devices {/a global_filter = [ "r|^/dev/drbd|" ]' /etc/lvm/lvm.conf
 
-# Install linstor-controller
+# Install linstor-server
 RUN apt-get update \
  && apt-get install -y default-jre-headless python3-all python3-natsort \
  && dpkg -i packages/*.deb \
