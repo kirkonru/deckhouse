@@ -14,7 +14,8 @@ spec:
   serviceAccountName: linstor-node
   satelliteImage: {{ $.Values.global.modulesImages.registry }}:{{ $.Values.global.modulesImages.tags.linstor.linstorServer }}
   #linstorHttpsClientSecret: linstor-client-secret
-  controllerEndpoint: https://linstor.d8-linstor.svc:3371
+  #controllerEndpoint: https://linstor.d8-linstor.svc:3371
+  controllerEndpoint: http://linstor.d8-linstor.svc:3370
   automaticStorageType: None
   affinity: {}
   tolerations: []
