@@ -53,7 +53,7 @@ subjects:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: d8:linstor:linstor-controller
+  name: d8:{{ .Chart.Name }}:linstor-controller
   {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-controller")) | nindent 2 }}
 rules:
   # LINSTOR manages its own CRDs, so we have to allow it to modify those
@@ -86,12 +86,12 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: d8:linstor:linstor-controller
+  name: d8:{{ .Chart.Name }}:linstor-controller
   {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-controller")) | nindent 2 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: d8:linstor:linstor-controller
+  name: d8:{{ .Chart.Name }}:linstor-controller
 subjects:
   - kind: ServiceAccount
     name: linstor-controller

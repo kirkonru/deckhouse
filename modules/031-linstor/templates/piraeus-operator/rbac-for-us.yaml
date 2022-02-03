@@ -133,7 +133,7 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: d8:linstor:csi-driver-registrar
+  name: d8:{{ .Chart.Name }}:csi-driver-registrar
   {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
 rules:
   - apiGroups:
@@ -169,7 +169,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: d8:linstor:csi-driver-registrar
+  name: d8:{{ .Chart.Name }}:csi-driver-registrar
   {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
 subjects:
   - kind: ServiceAccount
@@ -177,13 +177,13 @@ subjects:
     namespace: d8-{{ .Chart.Name }}
 roleRef:
   kind: ClusterRole
-  name: d8:linstor:csi-driver-registrar
+  name: d8:{{ .Chart.Name }}:csi-driver-registrar
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: d8:linstor:linstor-node-syncer
+  name: d8:{{ .Chart.Name }}:linstor-node-syncer
 rules:
   - apiGroups:
       - ""
@@ -197,12 +197,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: d8:linstor:linstor-node-syncer
+  name: d8:{{ .Chart.Name }}:linstor-node-syncer
 subjects:
   - kind: ServiceAccount
     name: piraeus-operator
     namespace: d8-{{ .Chart.Name }}
 roleRef:
   kind: ClusterRole
-  name: d8:linstor:linstor-node-syncer
+  name: d8:{{ .Chart.Name }}:linstor-node-syncer
   apiGroup: rbac.authorization.k8s.io
