@@ -4,20 +4,20 @@ apiVersion: piraeus.linbit.com/v1
 kind: LinstorController
 metadata:
   name: linstor
-  #namespace: d8-{{ .Chart.Name }}
-  #{{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
 spec:
   priorityClassName: ""
   dbConnectionURL: k8s
-  luksSecret: linstor-passphrase
-  sslSecret: linstor-control-secret
+  #luksSecret: linstor-passphrase
+  #sslSecret: linstor-control-secret
   dbCertSecret: ""
   dbUseClientCert: false
   drbdRepoCred: deckhouse-registry
-  controllerImage: ghcr.io/kvaps/test:piraeus-server2
+  controllerImage: {{ $.Values.global.modulesImages.registry }}:{{ $.Values.global.modulesImages.tags.linstor.linstorServer }}
   imagePullPolicy: IfNotPresent
-  linstorHttpsClientSecret: linstor-client-secret
-  linstorHttpsControllerSecret: linstor-controller-secret
+  #linstorHttpsClientSecret: linstor-client-secret
+  #linstorHttpsControllerSecret: linstor-controller-secret
   affinity: {}
   tolerations:
   - effect: NoSchedule

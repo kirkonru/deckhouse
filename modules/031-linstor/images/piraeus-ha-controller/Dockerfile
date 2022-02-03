@@ -11,6 +11,6 @@ RUN git clone https://github.com/piraeusdatastore/piraeus-ha-controller /usr/loc
  && go build \
  && mv ./piraeus-ha-controller /
 
-FROM debian:buster
-COPY --from=builder /piraeus-ha-controller /piraeus-ha-controller
-ENTRYPOINT ["/piraeus-ha-controller"]
+FROM $BASE_DEBIAN
+COPY --from=builder /piraeus-ha-controller /usr/bin/piraeus-ha-controller
+ENTRYPOINT ["/usr/bin/piraeus-ha-controller"]

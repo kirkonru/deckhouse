@@ -11,6 +11,6 @@ RUN git clone https://github.com/piraeusdatastore/piraeus-operator /usr/local/go
  && go build \
  && mv ./manager /piraeus-operator
 
-FROM debian:buster
-COPY --from=builder /piraeus-operator /piraeus-operator
-ENTRYPOINT ["/piraeus-operator"]
+FROM $BASE_DEBIAN
+COPY --from=builder /piraeus-operator /usr/bin/piraeus-operator
+ENTRYPOINT ["/usr/bin/piraeus-operator"]

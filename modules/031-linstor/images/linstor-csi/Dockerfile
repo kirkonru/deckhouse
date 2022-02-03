@@ -17,5 +17,5 @@ RUN apt-get update \
       e2fsprogs \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /linstor-csi-linux-amd64 /linstor-csi
-ENTRYPOINT ["/linstor-csi"]
+COPY --from=builder /linstor-csi-linux-amd64 /usr/bin/linstor-csi
+ENTRYPOINT ["/usr/bin/linstor-csi"]
