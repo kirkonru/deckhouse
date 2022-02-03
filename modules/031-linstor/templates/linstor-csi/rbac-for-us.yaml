@@ -1,0 +1,272 @@
+# Source https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/csi-controller-rbac.yml
+# Source https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/csi-node-rbac.yml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linstor-csi-controller
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+---
+# Attacher must be able to work with PVs, CSINodes and VolumeAttachments
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:external-attacher-runner
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:csi-attacher-role
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-controller
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  kind: ClusterRole
+  name: d8:{{ .Chart.Name }}:external-attacher-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:external-provisioner-runner
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:csi-provisioner-role
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-controller
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  kind: ClusterRole
+  name: d8:{{ .Chart.Name }}:external-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-capacity-syncer
+  namespace: d8-{{ .Chart.Name }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - get
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - csistoragecapacities
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-provisioner-capacity-syncer
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-controller
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: csi-capacity-syncer
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:external-snapshotter-runner
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents/status"]
+    verbs: ["update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:csi-snapshotter-role
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-controller
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  kind: ClusterRole
+  name: d8:{{ .Chart.Name }}:external-snapshotter-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:external-resizer-runner
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: d8:{{ .Chart.Name }}:csi-resizer-role
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-controller
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  kind: ClusterRole
+  name: d8:{{ .Chart.Name }}:external-resizer-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-leader-elector
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "watch", "list", "delete", "update", "create"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-leader-elector
+  namespace: {{ .Release.Namespace }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: csi-leader-elector
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-controller
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linstor-csi-node
+  namespace: d8-{{ .Chart.Name }}
+---
+# Cluster permissions for openshift installations
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: d8:{{ .Chart.Name }}:csi-node
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+rules:
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  resourceNames:
+  - privileged
+  verbs:
+  - use
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: d8:{{ .Chart.Name }}:csi-node
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-csi-controller")) | nindent 2 }}
+subjects:
+  - kind: ServiceAccount
+    name: linstor-csi-node
+    namespace: d8-{{ .Chart.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: d8:{{ .Chart.Name }}:csi-node
