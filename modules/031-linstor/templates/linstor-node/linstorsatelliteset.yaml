@@ -11,6 +11,7 @@ spec:
   #sslSecret: linstor-node-secret
   drbdRepoCred: deckhouse-registry
   imagePullPolicy: IfNotPresent
+  serviceAccountName: linstor-node
   satelliteImage: {{ $.Values.global.modulesImages.registry }}:{{ $.Values.global.modulesImages.tags.linstor.linstorServer }}
   #linstorHttpsClientSecret: linstor-client-secret
   controllerEndpoint: https://linstor-piraeus-cs.d8-linstor.svc:3371

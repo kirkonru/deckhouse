@@ -3,15 +3,15 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: linstor-satellite
+  name: linstor-node
   namespace: d8-{{ .Chart.Name }}
-  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-controller")) | nindent 2 }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-node")) | nindent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: d8:{{ .Chart.Name }}:linstor-satellite
-  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-controller")) | nindent 2 }}
+  name: d8:{{ .Chart.Name }}:linstor-node
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-node")) | nindent 2 }}
 rules:
   - apiGroups:
       - security.openshift.io
@@ -25,13 +25,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: d8:{{ .Chart.Name }}:linstor-satellite
-  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-controller")) | nindent 2 }}
+  name: d8:{{ .Chart.Name }}:linstor-node
+  {{- include "helm_lib_module_labels" (list . (dict "app" "linstor-node")) | nindent 2 }}
 subjects:
   - kind: ServiceAccount
-    name: linstor-satellite
+    name: linstor-node
     namespace: d8-{{ .Chart.Name }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: d8:{{ .Chart.Name }}:linstor-satellite
+  name: d8:{{ .Chart.Name }}:linstor-node

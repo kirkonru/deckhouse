@@ -14,6 +14,7 @@ spec:
   dbCertSecret: ""
   dbUseClientCert: false
   drbdRepoCred: deckhouse-registry
+  serviceAccountName: linstor-controller
   controllerImage: {{ $.Values.global.modulesImages.registry }}:{{ $.Values.global.modulesImages.tags.linstor.linstorServer }}
   imagePullPolicy: IfNotPresent
   #linstorHttpsClientSecret: linstor-client-secret
