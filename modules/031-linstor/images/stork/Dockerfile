@@ -19,5 +19,5 @@ RUN make stork storkctl \
  && mv bin/stork bin/linux/storkctl /
 
 FROM $BASE_DEBIAN
-COPY --from=builder /stork /storkctl /usr/bin/stork
+COPY --from=builder /stork /storkctl /usr/bin/
 ENTRYPOINT ["/usr/bin/stork"]
