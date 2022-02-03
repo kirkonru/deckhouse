@@ -1,0 +1,31 @@
+# Source: https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/operator-satelliteset.yaml
+---
+apiVersion: piraeus.linbit.com/v1
+kind: LinstorController
+metadata:
+  name: linstor
+  #namespace: d8-{{ .Chart.Name }}
+  #{{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
+spec:
+  priorityClassName: ""
+  dbConnectionURL: k8s
+  luksSecret: linstor-passphrase
+  sslSecret: linstor-control-secret
+  dbCertSecret: ""
+  dbUseClientCert: false
+  drbdRepoCred: deckhouse-registry
+  controllerImage: ghcr.io/kvaps/test:piraeus-server2
+  imagePullPolicy: IfNotPresent
+  linstorHttpsClientSecret: linstor-client-secret
+  linstorHttpsControllerSecret: linstor-controller-secret
+  affinity: {}
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+    operator: Exists
+  resources: {}
+  replicas: 1
+  additionalEnv: []
+  additionalProperties: {}
+  serviceAccountName: ""
+  logLevel: info

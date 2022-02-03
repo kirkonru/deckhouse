@@ -1,0 +1,26 @@
+# Source: https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/operator-satelliteset.yaml
+---
+apiVersion: piraeus.linbit.com/v1
+kind: LinstorSatelliteSet
+metadata:
+  name: linstor
+  #namespace: d8-{{ .Chart.Name }}
+  #{{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
+spec:
+  priorityClassName: ""
+  sslSecret: linstor-node-secret
+  drbdRepoCred: deckhouse-registry
+  imagePullPolicy: IfNotPresent
+  satelliteImage: ghcr.io/kvaps/test:piraeus-server2
+  linstorHttpsClientSecret: linstor-client-secret
+  controllerEndpoint: https://linstor-piraeus-cs.d8-linstor.svc:3371
+  automaticStorageType: None
+  affinity: {}
+  tolerations: []
+  resources: {}
+  monitoringImage: quay.io/piraeusdatastore/drbd-reactor:v0.4.4
+  kernelModuleInjectionImage: quay.io/piraeusdatastore/drbd9-bionic:v9.1.4
+  kernelModuleInjectionMode: Compile
+  kernelModuleInjectionResources: {}
+  additionalEnv: null
+  logLevel: info
