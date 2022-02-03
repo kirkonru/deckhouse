@@ -52,7 +52,7 @@ index 8806837..15a1304 100644
  				},
  				Data: map[string]string{
 diff --git a/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go b/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go
-index 83b0e57..3fda624 100644
+index 83b0e57..e0179de 100644
 --- a/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go
 +++ b/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go
 @@ -1011,7 +1011,7 @@ func getObjectMeta(controllerResource *piraeusv1.LinstorCSIDriver, nameFmt, comp
@@ -60,7 +60,7 @@ index 83b0e57..3fda624 100644
  		Namespace: controllerResource.Namespace,
  		Labels: map[string]string{
 -			"app.kubernetes.io/name":       kubeSpec.ControllerRole,
-+			"app.kubernetes.io/name":       kubeSpec.CSIControllerRole,
++			"app.kubernetes.io/name":       component,
  			"app.kubernetes.io/instance":   controllerResource.Name,
  			"app.kubernetes.io/managed-by": kubeSpec.Name,
  			"app.kubernetes.io/component":  component,
