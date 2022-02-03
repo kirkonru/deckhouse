@@ -1,0 +1,32 @@
+# Source: https://github.com/piraeusdatastore/piraeus-operator/blob/master/charts/piraeus/templates/operator-csi-driver.yaml
+---
+apiVersion: piraeus.linbit.com/v1
+kind: LinstorCSIDriver
+metadata:
+  name: linstor
+  namespace: d8-{{ .Chart.Name }}
+  {{- include "helm_lib_module_labels" (list . (dict "app" "piraeus-operator")) | nindent 2 }}
+spec:
+  imagePullSecret: deckhouse-registry
+  linstorPluginImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.linstor.linstorCsi }}
+  imagePullPolicy: IfNotPresent
+  csiControllerServiceAccountName: linstor-csi-controller
+  csiNodeServiceAccountName: linstor-csi-node
+  csiAttacherImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.common.csiExternalAttacher122 }}
+  csiLivenessProbeImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.common.csiLivenessprobe122 }}
+  csiNodeDriverRegistrarImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.common.csiNodeDriverRegistrar122 }}
+  csiProvisionerImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.common.csiExternalProvisioner122 }}
+  csiResizerImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.common.csiExternalResizer122 }}
+  csiSnapshotterImage: {{ .Values.global.modulesImages.registry }}:{{ .Values.global.modulesImages.tags.common.csiExternalSnapshotter122 }}
+  #linstorHttpsClientSecret: linstor-client-secret
+  priorityClassName: ""
+  controllerReplicas: 1
+  controllerEndpoint: https://linstor-controller.d8-{{ .Chart.Name }}.svc:3371
+  nodeAffinity: {}
+  nodeTolerations: []
+  controllerAffinity: {}
+  controllerTolerations: []
+  enableTopology: true
+  resources: {}
+  kubeletPath: /var/lib/kubelet
+  logLevel: info
