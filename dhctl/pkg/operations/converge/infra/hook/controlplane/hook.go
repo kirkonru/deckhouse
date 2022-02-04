@@ -23,14 +23,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/deckhouse/deckhouse/dhctl/pkg/kubernetes/actions/deckhouse"
+	"github.com/deckhouse/deckhouse/dhctl/pkg/kubernetes/actions/manifests"
 	"github.com/deckhouse/deckhouse/dhctl/pkg/kubernetes/client"
 	"github.com/deckhouse/deckhouse/dhctl/pkg/log"
 	"github.com/deckhouse/deckhouse/dhctl/pkg/operations/converge/infra/hook"
 	"github.com/deckhouse/deckhouse/dhctl/pkg/util/input"
 	"github.com/deckhouse/deckhouse/dhctl/pkg/util/retry"
 )
-
-const convergeLabel = "dhctl.deckhouse.io/node-for-converge"
 
 type Hook struct {
 	nodesNamesToCheck []string
@@ -83,17 +82,17 @@ func (h *Hook) convergeLabelToNode(shouldExist bool) error {
 	labels := node.GetLabels()
 
 	if shouldExist {
-		if _, ok := labels[convergeLabel]; ok {
+		if _, ok := labels[manifests.ConvergeLabel]; ok {
 			return nil
 		}
 
-		labels[convergeLabel] = ""
+		labels[manifests.ConvergeLabel] = ""
 	} else {
-		if _, ok := labels[convergeLabel]; !ok {
+		if _, ok := labels[manifests.ConvergeLabel]; !ok {
 			return nil
 		}
 
-		delete(labels, convergeLabel)
+		delete(labels, manifests.ConvergeLabel)
 	}
 
 	node.SetLabels(labels)
@@ -131,13 +130,13 @@ func (h *Hook) BeforeAction() (bool, error) {
 			return nil
 		}
 
-		title := fmt.Sprintf("Set label '%s' on converged node", convergeLabel)
+		title := fmt.Sprintf("Set label '%s' on converged node", manifests.ConvergeLabel)
 		err = retry.NewLoop(title, 10, 3*time.Second).Run(func() error {
 			return h.convergeLabelToNode(true)
 		})
 
 		if err != nil {
-			return fmt.Errorf("Cannot set label '%s' to node: %v", convergeLabel, err)
+			return fmt.Errorf("Cannot set label '%s' to node: %v", manifests.ConvergeLabel, err)
 		}
 
 		err = retry.NewLoop("Evict deckhouse pod from node", 10, 3*time.Second).Run(func() error {
@@ -165,7 +164,7 @@ func (h *Hook) AfterAction() error {
 		return nil
 	}
 
-	title := fmt.Sprintf("Delete label '%s' from converged node", convergeLabel)
+	title := fmt.Sprintf("Delete label '%s' from converged node", manifests.ConvergeLabel)
 	return retry.NewLoop(title, 10, 3*time.Second).Run(func() error {
 		return h.convergeLabelToNode(false)
 	})
