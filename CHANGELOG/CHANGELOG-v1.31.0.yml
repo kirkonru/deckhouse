@@ -1,0 +1,34 @@
+cert-manager:
+  fixes:
+    - description: fix certificate requirements documentation
+      pull_request: https://github.com/deckhouse/deckhouse/pull/726
+ci:
+  fixes:
+    - description: handle pull_request_target event in git_info job
+      pull_request: https://github.com/deckhouse/deckhouse/pull/740
+deckhouse:
+  fixes:
+    - description: More controllable and transparent release process
+      pull_request: https://github.com/deckhouse/deckhouse/pull/699
+dhctl:
+  features:
+    - description: >-
+        Add flags to the installation command to deploy Deckhouse without master node selector and
+        tuned connection options.
+      pull_request: https://github.com/deckhouse/deckhouse/pull/716
+  fixes:
+    - description: Fix potential panic for bashible logs in  command
+      pull_request: https://github.com/deckhouse/deckhouse/pull/724
+docs:
+  fixes:
+    - description: Review and fix the 'Supported Kubernetes and OS versions' article.
+      pull_request: https://github.com/deckhouse/deckhouse/pull/750
+ingress-ngnix:
+  fixes:
+    - description: Proper validating webhook configuration for k8s 1.22+.
+      pull_request: https://github.com/deckhouse/deckhouse/pull/637
+istio:
+  fixes:
+    - description: Canary usage doc fix.
+      pull_request: https://github.com/deckhouse/deckhouse/pull/731
+
