@@ -1,0 +1,5 @@
+node-group:
+  fixes:
+    - description: Fix event creation for NG when new Machine provisioning process is failed
+      pull_request: https://github.com/deckhouse/deckhouse/pull/757
+
