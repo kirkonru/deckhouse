@@ -61,7 +61,7 @@ index 8806837..15a1304 100644
  				},
  				Data: map[string]string{
 diff --git a/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go b/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go
-index 83b0e57..e0179de 100644
+index 83b0e57..0f94205 100644
 --- a/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go
 +++ b/pkg/controller/linstorcsidriver/linstorcsidriver_controller.go
 @@ -1011,7 +1011,7 @@ func getObjectMeta(controllerResource *piraeusv1.LinstorCSIDriver, nameFmt, comp
@@ -69,7 +69,7 @@ index 83b0e57..e0179de 100644
  		Namespace: controllerResource.Namespace,
  		Labels: map[string]string{
 -			"app.kubernetes.io/name":       kubeSpec.ControllerRole,
-+			"app.kubernetes.io/name":       component,
++			"app.kubernetes.io/name":       kubeSpec.CSIDriverRole,
  			"app.kubernetes.io/instance":   controllerResource.Name,
  			"app.kubernetes.io/managed-by": kubeSpec.Name,
  			"app.kubernetes.io/component":  component,
@@ -104,3 +104,17 @@ index c2eb993..e416081 100644
  
  	return &corev1.Service{
  		ObjectMeta: meta,
+diff --git a/pkg/k8s/spec/piraeus.go b/pkg/k8s/spec/piraeus.go
+index 2827d14..ecb94db 100644
+--- a/pkg/k8s/spec/piraeus.go
++++ b/pkg/k8s/spec/piraeus.go
+@@ -29,6 +29,9 @@ const (
+ 	// NodeRole is the role for the node set
+ 	NodeRole = "piraeus-node"
+ 
++	// CSIDriverRole is the role for the CSI Workloads
++	CSIDriverRole = "piraeus-csi"
++
+ 	// CSIControllerRole is the role for the CSI Controller Workloads
+ 	CSIControllerRole = "csi-controller"
+ 
