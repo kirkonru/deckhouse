@@ -7,7 +7,7 @@ In Deckhouse, this module sets up:
 - **[The logging level](configuration.html#parameters-loglevel)**;
 - **[The set of modules](configuration.html#parameters-bundle) enabled by default**;
 
-Usually, the Default set is used (it is suitable for most cases).
+Usually, the `Default` set is used (it is suitable for most cases).
 
 Regardless of the set of modules enabled by default, any module can be explicitly enabled or disabled in the Deckhouse configuration (learn more [about enabling and disabling a module](../../#enabling-and-disabling-a-module)).
 - **[The release channel](configuration.html#parameters-releasechannel)**;
