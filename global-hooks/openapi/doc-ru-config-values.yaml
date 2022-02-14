@@ -20,9 +20,11 @@ properties:
       publicDomainTemplate:
         # only check that is containing %s
         description: |
-          Шаблон c ключом `%s` в качестве динамической части строки.
+          Шаблон DNS-имен c ключом `%s` в качестве динамической части строки.
 
-          Шаблон будет использоваться при формировании DNS-записей, необходимых для работы модулей Deckhouse.
+          Модули Deckhouse используют этот шаблон при создании Ingress-ресурсов.
+
+          Например, для шаблона `%s.kube.company.my` модуль prometheus создаст Ingress-ресурс на адрес `grafana.kube.company.my` для доступа к Grafana.
 
           **Нельзя** использовать в кластере DNS-имена (создавать соответствующие Ingress-ресурсы), подпадающие под указанный шаблон! Это может вызвать пересечения с создаваемыми Deckhouse Ingress-ресурсами.
 
@@ -63,33 +65,33 @@ properties:
                   Указанный Secret должен быть в формате [kubernetes.io/tls](https://kubernetes.github.io/ingress-nginx/user-guide/tls/#tls-secrets).
       resourcesRequests:
         description: |
-          Количество ресурсов (CPU и памяти), выделяемых для работы компонентов Deckhouse.
+          Количество ресурсов (CPU и памяти), выделяемых для работы компонентов Deckhouse, работающих на каждом узле кластера (обычно это DaemonSet'ы, например, `cni-flannel`, `monitoring-ping`).
 
           [Подробнее](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes) про единицы измерения ресурсов.
         properties:
           everyNode:
             description: |
-              Количество ресурсов (CPU и памяти), выделяемых для компонентов Deckhouse работающих на каждом узле кластера (обычно это DaemonSet'ы).
+              Количество ресурсов (CPU и памяти), выделяемых для компонентов Deckhouse работающих на каждом узле кластера.
             properties:
               cpu:
                 description: |
-                  Количество CPU, выделяемое для всех компонентов Deckhouse на каждом узле.
+                  Количество CPU, выделяемое на каждом узле.
               memory:
                 description: |
-                  Объем памяти, выделяемый для всех компонентов Deckhouse на каждом узле.
+                  Объем памяти, выделяемый на каждом узле.
           masterNode:
             description: |
-              Количество ресурсов (CPU и памяти), выделяемых для компонентов Deckhouse работающих на master-узлах (в том числе `control plane`, если `control plane` управляется Deckhouse).
+              Количество ресурсов (CPU и памяти), выделяемых для компонентов Deckhouse работающих на каждом master-узле (в том числе `control plane`, если `control plane` управляется Deckhouse).
 
               **Внимание!** В случае managed-кластера Deckhouse не управляет компонентами `control plane`, поэтому все указанные в параметре `masterNode` ресурсы отдаются компонентам Deckhouse.
             properties:
               cpu:
                 description: |
-                  Количество CPU, выделяемое для всех компонентов Deckhouse работающих на master-узлах, **сверх** указанного в параметре `everyNode.cpu`.
+                  Количество CPU, выделяемое на каждом master-узле **дополнительно** к указанному в параметре `everyNode.cpu`.
                     * Для кластера, управляемого Deckhouse, значение по умолчанию определяется автоматически по формуле: `.status.allocatable.cpu` минимального master-узла (но не более `4` (ядер CPU)) минус количество CPU, указанное в параметре `everyNode.cpu`.
                     * Для managed-кластера значение по умолчанию: `1` (одно ядро CPU) минус количество CPU, указанное в параметре `everyNode.cpu`.
               memory:
                 description: |
-                  Объем памяти, выделяемый для всех компонентов Deckhouse работающих на master-узлах, **сверх** указанного в параметре `everyNode.memory`.
+                  Объем памяти, выделяемый на каждом master-узле, **дополнительно** к указанному в параметре `everyNode.memory`.
                     * Для кластера, управляемого Deckhouse, значение по умолчанию определяется автоматически по формуле: `.status.allocatable.memory` минимального master-узла (но не более `8Gi`) минус значение, указанное в параметре `everyNode.memory`.
                     * Для managed-кластера значение по умолчанию: `1Gi` минус значение, указанное в параметре `everyNode.memory`.
