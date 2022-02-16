@@ -16,12 +16,12 @@ Deckhouse состоит из оператора Deckhouse и модулей. М
 
 ## Конфигурация Deckhouse
 
-Конфигурация Deckhouse хранится в ConfigMap `deckhouse` в пространстве имен `d8-system`.
+Конфигурация Deckhouse хранится в ConfigMap `deckhouse` в пространстве имен `d8-system` и может содержать следующие параметры (ключи):
+- `global` —  содержит [глобальные настройки](deckhouse-configure-global.html);
+- `<moduleName>` (где `<moduleName>` — название модуля Deckhouse в camelCase) — содержит настройки модуля;
+- `<moduleName>Enabled` (где `<moduleName>` — название модуля Deckhouse в camelCase) — позволяет явно включить или отключить модуль. Может принимать значение `"true"` или `"false"` (кавычки обязательны).
 
-Структура конфигурации Deckhouse:
-- ключ `global` —  содержит [глобальные настройки](deckhouse-configure-global.html) Deckhouse в виде multi-line-строки в формате YAML (строка начинается с символа вертикальной черты — `|`);
-- ключ `<moduleName>` (где `<moduleName>` — название модуля Deckhouse в camelCase) — содержит настройки модуля в виде multi-line-строки в формате YAML (строка начинается с символа вертикальной черты — `|`);
-- ключ `<moduleName>Enabled` (где `<moduleName>` — название модуля Deckhouse в camelCase) — параметр позволяет явно включить или отключить модуль. Может принимать одно из двух значений: `"true"` или `"false"` (кавычки обязательны), где `<moduleName>` — название модуля в camelCase. В зависимости от используемого [варианта поставки](./modules/020-deckhouse/configuration.html#parameters-bundle) модули могут быть включены или выключены по умолчанию. 
+> Глобальные настройки и настройки модуля указываются в виде многострочной YAML-строки (строка начинается с символа вертикальной черты — `|`)
 
 Пример ConfigMap `deckhouse`:
 ```yaml
@@ -54,6 +54,39 @@ kubectl -n d8-system edit cm/deckhouse
 ```
 
 После сохранения конфигурации Deckhouse изменения применяются автоматически. 
+
+## Наборы модулей
+
+Deckhouse работает только с включёнными модулями.
+
+В зависимости от используемого [набора модулей](./modules/020-deckhouse/configuration.html#parameters-bundle) модули могут быть включены или выключены по умолчанию.
+
+{%- assign bundles = site.data.bundles | sort %}
+<table>
+<thead>
+<tr><th>Название набора модулей</th><th>Список включенных по умолчанию модулей</th></tr></thead>
+<tbody>
+{% for bundle in bundles %}
+<tr>
+<td><strong>{{ bundle[0] |  replace_first: "values-", "" | capitalize }}</strong></td>
+<td>{% assign modules = bundle[1] | sort %}
+<ul style="columns: 3">
+{%- for module in modules %}
+{%- assign moduleName = module[0] | regex_replace: "Enabled$", '' | camel_to_snake_case | replace: "_", '-' %}
+{%- assign isExcluded = site.data.exclude.module_names | where: "name", moduleName %}
+{%- if isExcluded.size > 0 %}{% continue %}{% endif %} 
+{%- if module[1] != true %}{% continue %}{% endif %}
+<li>
+{{ module[0] | regex_replace: "Enabled$", '' | camel_to_snake_case | replace: "_", '-' }}</li>
+{%- endfor %}
+</ul>
+</td>
+</tr>
+{%- endfor %}
+</tbody>
+</table>
+
+Выключить модули, включенные по умолчанию в используемом наборе модулей (и наоборот), вы можете в [конфигурации Deckhouse](#конфигурация-deckhouse).
 
 ## Выделение узлов под определенный вид нагрузки
 

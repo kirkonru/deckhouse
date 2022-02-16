@@ -78,6 +78,8 @@ data:
 
 ### Включение и отключение модуля
 
+> Некоторые модули могут быть включены по умолчанию в зависимости от используемого [набора модулей](#наборы-модулей).
+
 Для включения или отключения модуля необходимо добавить в ConfigMap `deckhouse` параметр `<moduleName>Enabled`, который может принимать одно из двух значений: `"true"` или `"false"` (кавычки обязательны), где `<moduleName>` — название модуля в camelCase.
 
 Пример включения модуля `user-authn`:
@@ -85,6 +87,37 @@ data:
 data:
   userAuthnEnabled: "true"
 ```
+
+## Наборы модулей
+
+Deckhouse работает только с включёнными модулями.
+
+В зависимости от используемого [набора модулей](./modules/020-deckhouse/configuration.html#parameters-bundle) модули могут быть включены или выключены по умолчанию.
+
+{%- assign bundles = site.data.bundles | sort %}
+<table>
+<thead>
+<tr><th>Название набора модулей</th><th>Список включенных по умолчанию модулей</th></tr></thead>
+<tbody>
+{% for bundle in bundles %}
+<tr>
+<td><strong>{{ bundle[0] |  replace_first: "values-", "" | capitalize }}</strong></td>
+<td>{% assign modules = bundle[1] | sort %}
+<ul style="columns: 3">
+{%- for module in modules %}
+{%- assign moduleName = module[0] | regex_replace: "Enabled$", '' | camel_to_snake_case | replace: "_", '-' %}
+{%- assign isExcluded = site.data.exclude.module_names | where: "name", moduleName %}
+{%- if isExcluded.size > 0 %}{% continue %}{% endif %} 
+{%- if module[1] != true %}{% continue %}{% endif %}
+<li>
+{{ module[0] | regex_replace: "Enabled$", '' | camel_to_snake_case | replace: "_", '-' }}</li>
+{%- endfor %}
+</ul>
+</td>
+</tr>
+{%- endfor %}
+</tbody>
+</table>
 
 ## Выделение узлов под определенный вид нагрузки
 
