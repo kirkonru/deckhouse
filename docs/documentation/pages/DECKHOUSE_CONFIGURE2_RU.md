@@ -1,26 +1,27 @@
 ---
 title: "Как настроить?"
-permalink: ru/
+permalink: ru/ver2.html
 lang: ru
 ---
 
 Deckhouse состоит из оператора Deckhouse и модулей. Модуль — набор helm-чартов, хуков, файлов и правил сборки компонентов модуля (компонентов Deckhouse).
 
+> При работе с модулями Deckhouse использует проект [addon-operator](https://github.com/flant/addon-operator/). Ознакомьтесь с его документацией, если хотите понять как Deckhouse работает с [модулями](https://github.com/flant/addon-operator/blob/main/MODULES.md), [хуками модулей](https://github.com/flant/addon-operator/blob/main/HOOKS.md), [параметрами модулей](https://github.com/flant/addon-operator/blob/main/VALUES.md). Будем признательны, если поставите проекту *звезду*.
+
 Поведение Deckhouse настраивается с помощью:
-- [Глобальных настроек](deckhouse-configure-global.html#параметры), хранящихся в параметре `global` [конфигурации Deckhouse](#конфигурация-deckhouse);
+- [Глобальных настроек](deckhouse-configure-global.html#параметры), хранящихся в параметре `global` [конфигурации Deckhouse](#конфигурация-deckhouse); 
 - Настроек модулей, хранящихся в [конфигурации Deckhouse](#конфигурация-deckhouse) и custom resource'ах (для некоторых модулей Deckhouse).
+
+Воспользуйтесь поиском (наверху страницы) или найдите модуль в меню слева, чтобы получить документацию по его настройкам и используемым custom resource'ам.
 
 ## Конфигурация Deckhouse
 
-Конфигурация Deckhouse хранится в ConfigMap `deckhouse` в пространстве имен `d8-system` и может содержать следующие параметры (ключи):
-- `global` —  содержит [глобальные настройки](deckhouse-configure-global.html) Deckhouse в виде multi-line-строки в формате YAML;
-- `<moduleName>` (где `<moduleName>` — название модуля Deckhouse в camelCase) — содержит [настройки модуля](#настройка-модуля) в виде multi-line-строки в формате YAML;
-- `<moduleName>Enabled` (где `<moduleName>` — название модуля Deckhouse в camelCase) — параметр позволяет явно [включить или отключить модуль](#включение-и-отключение-модуля).
+Конфигурация Deckhouse хранится в ConfigMap `deckhouse` в пространстве имен `d8-system`.
 
-Чтобы посмотреть конфигурацию Deckhouse выполните следующую команду:
-```shell
-kubectl -n d8-system get cm/deckhouse -o yaml
-```
+Структура конфигурации Deckhouse:
+- ключ `global` —  содержит [глобальные настройки](deckhouse-configure-global.html) Deckhouse в виде multi-line-строки в формате YAML (строка начинается с символа вертикальной черты — `|`);
+- ключ `<moduleName>` (где `<moduleName>` — название модуля Deckhouse в camelCase) — содержит настройки модуля в виде multi-line-строки в формате YAML (строка начинается с символа вертикальной черты — `|`);
+- ключ `<moduleName>Enabled` (где `<moduleName>` — название модуля Deckhouse в camelCase) — параметр позволяет явно включить или отключить модуль. Может принимать одно из двух значений: `"true"` или `"false"` (кавычки обязательны), где `<moduleName>` — название модуля в camelCase. В зависимости от используемого [варианта поставки](./modules/020-deckhouse/configuration.html#parameters-bundle) модули могут быть включены или выключены по умолчанию. 
 
 Пример ConfigMap `deckhouse`:
 ```yaml
@@ -33,38 +34,7 @@ data:
     # Глобальные настройки в формате YAML.
     modules:
       publicDomainTemplate: "%s.kube.company.my"
-  # Настройки модуля monitoring-ping в формате YAML.
-  monitoringPing: |
-    externalTargets:
-    - host: 8.8.8.8
-  # Отключение модуля dashboard.
-  dashboardEnabled: "false"   
-```
-
-Обратите внимание на несколько важных нюансов в конфигурации:
-* Символ `|` (вертикальная черта) обязательно должен быть указан, т.к. передаваемое значение — многострочная строка (multi-line string), а не объект;
-* Наименование модулей пишется в стиле *camelCase*, при котором несколько слов пишутся слитно без пробелов, при этом каждое слово внутри фразы пишется с прописной буквы;
-
-Чтобы изменить конфигурацию Deckhouse отредактируйте ConfigMap `deckhouse`, например следующим способом:
-```shell
-kubectl -n d8-system edit cm/deckhouse
-```
-
-После сохранения конфигурации Deckhouse изменения применяются автоматически. 
-
-### Настройка модуля
-
-> При работе с модулями Deckhouse использует проект [addon-operator](https://github.com/flant/addon-operator/). Ознакомьтесь с его документацией, если хотите понять как Deckhouse работает с [модулями](https://github.com/flant/addon-operator/blob/main/MODULES.md), [хуками модулей](https://github.com/flant/addon-operator/blob/main/HOOKS.md), [параметрами модулей](https://github.com/flant/addon-operator/blob/main/VALUES.md). Будем признательны, если поставите проекту *звезду*.
-
-Deckhouse работает только с включёнными модулями. В зависимости от используемого [варианта поставки](./modules/020-deckhouse/configuration.html#parameters-bundle) модули могут быть включены или выключены по умолчанию. Читайте подробнее про явное [включение или отключение модуля](#включение-и-отключение-модуля).
-
-Модуль настраивается в конфигурации Deckhouse в параметре с названием модуля в camelCase. Значением параметра передается multi-line-строка в формате YAML с настройками модуля.
-
-Некоторые модули дополнительно настраиваются с помощью custom resource'ов. Воспользуйтесь поиском (наверху страницы) или найдите модуль в меню слева, чтобы получить документацию по его настройкам и используемым custom resource'ам.
-
-Пример настройки параметров модуля `kube-dns`:
-```yaml
-data:
+  # Настройки модуля kube-dns в формате YAML.
   kubeDns: |
     stubZones:
     - upstreamNameservers:
@@ -74,17 +44,16 @@ data:
     upstreamNameservers:
     - 10.2.100.55
     - 10.2.200.55
+  # Отключение модуля dashboard.
+  dashboardEnabled: "false"   
 ```
 
-### Включение и отключение модуля
-
-Для включения или отключения модуля необходимо добавить в ConfigMap `deckhouse` параметр `<moduleName>Enabled`, который может принимать одно из двух значений: `"true"` или `"false"` (кавычки обязательны), где `<moduleName>` — название модуля в camelCase.
-
-Пример включения модуля `user-authn`:
-```yaml
-data:
-  userAuthnEnabled: "true"
+Чтобы изменить конфигурацию Deckhouse отредактируйте ConfigMap `deckhouse`, например следующим способом:
+```shell
+kubectl -n d8-system edit cm/deckhouse
 ```
+
+После сохранения конфигурации Deckhouse изменения применяются автоматически. 
 
 ## Выделение узлов под определенный вид нагрузки
 
